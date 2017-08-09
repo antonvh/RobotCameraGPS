@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import time
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
@@ -19,7 +20,7 @@ while True:
 
     # find edges and dilate
     output = cv2.Canny(output, 100, 200)
-    output = cv2.dilate(output, cv2.MORPH_RECT)
+    output = cv2.dilate(output, np.ones((6, 6)))
 
     # output = cv2.adaptiveThreshold(output, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
     # Otsu's thresholding
