@@ -177,6 +177,7 @@ while True:
 
     # Make edges of the image white, rest black
     edges = cv2.Canny(image, 100, 200)
+    edges = cv2.dilate(edges, np.ones((6, 6)))
 
 
     # Get a list of contours found in the edgified image.
