@@ -1,3 +1,5 @@
+#Using Python3, openCV3
+
 import cv2
 import numpy as np
 import time
@@ -11,26 +13,46 @@ t = time.time()
 while True:
 
 
-    ret, output = cap.read()
+    ret, img = cap.read()
     if not ret:
         continue
 
     # convert to grayscale
-    output = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # find edges and dilate
-    output = cv2.Canny(output, 100, 200)
-    output = cv2.dilate(output, np.ones((6, 6)))
+    # # find edges and dilate. Nice & fast!
+    # img = cv2.Canny(img, 100, 200)
+    # img = cv2.dilate(img, np.ones((6, 6)))
 
-    # output = cv2.adaptiveThreshold(output, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-    # Otsu's thresholding
+    # OR...
+
+    # # Adaptive thresholding. Too slow. :(
+    # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    # OR...
+
+    # Otsu's thresholding. Nice & fast!
     # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
-    # values, output = cv2.threshold(output, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    output, contours, hierarchy = cv2.findContours(output, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    values, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    cv2.imshow("cam", output)
 
-    # Wait for the magic key
+    # Find contours and tree
+    img, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Find contours with at least x children. These must be qr markers!
+
+    # Find markers that belong together
+
+    # Calculate their positions and rotations using moments
+
+    # Read their qr codes just once (expensive!) and then track them frame-to-frame.
+
+    # Publish all data in a service on another thread, to which robots can connect.
+
+    # Check all calculations in a preview window
+    cv2.imshow("cam", img)
+
+    # Wait for the 'q' key. Dont use ctrl-c !!!
     keypress = cv2.waitKey(1) & 0xFF
     if keypress == ord('q'):
         break
