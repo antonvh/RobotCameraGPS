@@ -4,12 +4,12 @@ import cv2
 import numpy as np
 import time
 
-def center(contour):
-    # print(contour[0][0])
-    return (contour[0][0][0]+contour[2][0][0])/2, (contour[0][0][1]+contour[2][0][1])/2
-
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
+
+
+def atan2_vec(vector):
+    return np.arctan2(vector[1], vector[0])/3.1415*180
 
 n = 100 # Number of loops to wait for time calculation
 t = time.time()
@@ -43,7 +43,7 @@ while True:
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # Find square contours with at least 2 children. These must be qr markers!
-    markers = []
+    markers = {}
     for x in range(0, len(contours)):
 
         k = x
@@ -62,24 +62,53 @@ while True:
             approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.02, True)
             # approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true) * 0.02, true);
             if len(approx) == 4:
+                # We found a squarish object
                 # print(approx)
-                markers += {'id': x,
-                            'contour': approx,
-                            'center': center(approx)
-                            }
-                print(center(approx))
-                cv2.drawContours(img, [approx], -1, (0,0,255), 3, lineType=cv2.LINE_4)
+                a = approx[0][0]
+                b = approx[1][0]
+                c = approx[2][0]
+                d = approx[3][0]
+                center = (a+b)/2
+                markers[x] = {'contour': approx,
+                              'center': center,
+                              'buddy_centers': [center+(a-b)*2, center+(b-c)*2, center+(c-d)*2, center+(d-a)*2],
+                              'buddies': []
+                              }
 
     # Find markers that belong together
     for m in markers:
-        pass
-        # Calculate list of buddy positions (aligned & within distance)
+        for b in markers:
+            # print(m)
+            for c in markers[m]['buddy_centers']:
+                distance = c - markers[b]['center']
+                if all(np.array([-5, -5]) < distance) and all(distance < np.array([5, 5])):
+                    # We found a buddy marker!
+                    markers[m]['buddies'] += [b]
+
+    for mkey in markers:
+        marker = markers[mkey]
+        if len(marker['buddies']) == 2:
+            buddy1 = markers[marker['buddies'][0]]
+            buddy2 = markers[marker['buddies'][1]]
+            cv2.drawContours(img, [marker['contour']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
+            direction1 = (marker['center']-buddy1['center'])
+            direction1 /= np.linalg.norm(direction1)                # normalize vector
+            direction2 = (marker['center'] - buddy2['center'])
+            direction2 /= np.linalg.norm(direction2)                # normalize vector
+            orientation = atan2_vec(direction1 + direction2) + 135
+            position = tuple([int(x) for x in (buddy1['center']+buddy2['center'])/2])
+            cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 4)
+
+
+
+            # Calculate list of buddy positions (aligned & within distance)
         # Check list of markers against buddy list
         # See if we can find two other buddy markers
 
     # Calculate their positions and rotations using moments
 
     # Read their qr codes just once (expensive!) and then track them frame-to-frame.
+    # https://www.learnopencv.com/object-tracking-using-opencv-cpp-python/
 
     # Publish all data in a service on another thread, to which robots can connect.
 
