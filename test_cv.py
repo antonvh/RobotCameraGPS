@@ -14,6 +14,7 @@ def atan2_vec(vector):
 n = 100 # Number of loops to wait for time calculation
 t = time.time()
 # Capture frames from the camera
+trackers = []
 while True:
 
     ok, img = cap.read()
@@ -38,6 +39,13 @@ while True:
     # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
     values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
+    # Track previously identified qr codes
+    # for tracker in trackers:
+    #     ok, bbox = tracker.update(img)
+    #     p1 = (int(bbox[0]), int(bbox[1]))
+    #     p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+    #     cv2.rectangle(img_grey, p1, p2, (0,0,0), cv2.FILLED)
+    #     cv2.rectangle(img, p1, p2, (255, 0, 0))
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -72,6 +80,7 @@ while True:
                 markers[x] = {'contour': approx,
                               'center': center,
                               'buddy_centers': [center+(a-b)*2, center+(b-c)*2, center+(c-d)*2, center+(d-a)*2],
+
                               'buddies': []
                               }
 
@@ -87,28 +96,41 @@ while True:
 
     for mkey in markers:
         marker = markers[mkey]
-        if len(marker['buddies']) == 2:
-            buddy1 = markers[marker['buddies'][0]]
-            buddy2 = markers[marker['buddies'][1]]
-            cv2.drawContours(img, [marker['contour']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
-            direction1 = (marker['center']-buddy1['center'])
-            direction1 /= np.linalg.norm(direction1)                # normalize vector
-            direction2 = (marker['center'] - buddy2['center'])
-            direction2 /= np.linalg.norm(direction2)                # normalize vector
-            orientation = atan2_vec(direction1 + direction2) + 135
-            position = tuple([int(x) for x in (buddy1['center']+buddy2['center'])/2])
-            cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 4)
+        if __name__ == '__main__':
+            if len(marker['buddies']) == 2:
+                buddy1_c = markers[marker['buddies'][0]]['center']
+                buddy2_c = markers[marker['buddies'][1]]['center']
 
+                # Calculate normalized vectors pointing to the two buddy markers from the main marker.
+                direction1 = (marker['center']-buddy1_c)
+                direction1 /= np.linalg.norm(direction1)
+                direction2 = (marker['center'] - buddy2_c)
+                direction2 /= np.linalg.norm(direction2)
 
+                # The orientation wil be the sum of the two vectors + 135 degrees
+                orientation = atan2_vec(direction1 + direction2) + 135
 
-            # Calculate list of buddy positions (aligned & within distance)
-        # Check list of markers against buddy list
-        # See if we can find two other buddy markers
+                # The position is in the middle (average) of the two buddy markers.
+                # Converting the float tuple to an int tuple with a list comprehension
+                position = np.array([int(x) for x in (buddy1_c+buddy2_c)/2])
 
-    # Calculate their positions and rotations using moments
+                # Draw the result
+                cv2.drawContours(img, [marker['contour']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
+                cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), tuple(position), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 4)
 
-    # Read their qr codes just once (expensive!) and then track them frame-to-frame.
-    # https://www.learnopencv.com/object-tracking-using-opencv-cpp-python/
+                # Read qr code content
+                bbox = cv2.boundingRect(np.concatenate((marker['contour'],
+                                                        markers[marker['buddies'][0]]['contour'],
+                                                        markers[marker['buddies'][1]]['contour']
+                                                        ), axis=0))
+                p1 = (int(bbox[0]), int(bbox[1]))
+                p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                cv2.rectangle(img, p1, p2, (0, 0, 255))
+
+                # Start a tracker
+                # tracker = cv2.Tracker_create("MIL")
+                # ok = tracker.init(img, bbox)
+                # trackers += [tracker]
 
     # Publish all data in a service on another thread, to which robots can connect.
 
