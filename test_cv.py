@@ -76,11 +76,10 @@ while True:
                 b = approx[1][0]
                 c = approx[2][0]
                 d = approx[3][0]
-                center = (a+b)/2
+                center = (a+c)/2
                 markers[x] = {'contour': approx,
                               'center': center,
                               'buddy_centers': [center+(a-b)*2, center+(b-c)*2, center+(c-d)*2, center+(d-a)*2],
-
                               'buddies': []
                               }
 
@@ -100,6 +99,8 @@ while True:
             if len(marker['buddies']) == 2:
                 buddy1_c = markers[marker['buddies'][0]]['center']
                 buddy2_c = markers[marker['buddies'][1]]['center']
+                cv2.circle(img, tuple(buddy1_c.astype(int)), 5, (0, 255,))
+                cv2.circle(img, tuple(buddy2_c.astype(int)), 5, (0, 255,))
 
                 # Calculate normalized vectors pointing to the two buddy markers from the main marker.
                 direction1 = (marker['center']-buddy1_c)
@@ -112,20 +113,30 @@ while True:
 
                 # The position is in the middle (average) of the two buddy markers.
                 # Converting the float tuple to an int tuple with a list comprehension
-                position = np.array([int(x) for x in (buddy1_c+buddy2_c)/2])
+                position = ((buddy1_c + buddy2_c)/2).astype(int)
 
                 # Draw the result
                 cv2.drawContours(img, [marker['contour']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
                 cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), tuple(position), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 4)
 
                 # Read qr code content
-                bbox = cv2.boundingRect(np.concatenate((marker['contour'],
-                                                        markers[marker['buddies'][0]]['contour'],
-                                                        markers[marker['buddies'][1]]['contour']
-                                                        ), axis=0))
-                p1 = (int(bbox[0]), int(bbox[1]))
-                p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                cv2.rectangle(img, p1, p2, (0, 0, 255))
+                # bbox = cv2.boundingRect(np.concatenate((marker['contour'],
+                #                                         markers[marker['buddies'][0]]['contour'],
+                #                                         markers[marker['buddies'][1]]['contour']
+                #                                         ), axis=0))
+                # p1 = (int(bbox[0]), int(bbox[1]))
+                # p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                # cv2.rectangle(img, p1, p2, (0, 0, 255))
+                a = (marker['center']-position)
+                b = (buddy1_c-position)
+                c = - a
+                d = (buddy2_c-position)
+                box = np.array([a,b,c,d])
+                # Straighten
+                # Using cv2.remap ?
+
+                # Zbar
+                # In a separate thread?
 
                 # Start a tracker
                 # tracker = cv2.Tracker_create("MIL")
