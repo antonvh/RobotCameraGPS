@@ -7,12 +7,7 @@ import zbarlight
 from PIL import Image
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
-# cv2.namedWindow("QR", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
-dst = np.array([[0, 0],
-                [200, 0],
-                [200, 200],
-                [0, 200]])
 
 def atan2_vec(vector):
     return np.arctan2(vector[1], vector[0])/3.1415*180
@@ -20,8 +15,8 @@ def atan2_vec(vector):
 n = 100 # Number of loops to wait for time calculation
 t = time.time()
 # Capture frames from the camera
-trackers = []
 qr_tags = []
+
 while True:
 
     ok, img = cap.read()
@@ -37,22 +32,9 @@ while True:
 
     # OR...
 
-    # # Adaptive thresholding. Too slow. :(
-    # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-
-    # OR...
-
     # Otsu's thresholding. Nice & fast!
     # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
     values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # Track previously identified qr codes
-    # for tracker in trackers:
-    #     ok, bbox = tracker.update(img)
-    #     p1 = (int(bbox[0]), int(bbox[1]))
-    #     p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-    #     cv2.rectangle(img_grey, p1, p2, (0,0,0), cv2.FILLED)
-    #     cv2.rectangle(img, p1, p2, (255, 0, 0))
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -118,10 +100,6 @@ while True:
                 # Converting the float tuple to an int tuple with a list comprehension
                 position = ((buddy1_c + buddy2_c)/2).astype(int)
 
-                # Draw the data
-                cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), tuple(position),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4)
-
                 # Let's mak a box at origin, connecting the marker centers.
                 a = (marker['center']-position)
                 b = (buddy1_c-position)
@@ -139,7 +117,7 @@ while True:
                 movement_envelope += position
 
                 # check result
-                cv2.drawContours(img, [qr_box, movement_envelope], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
+                # cv2.drawContours(img, [qr_box, movement_envelope], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
 
                 # Read QR
                 bound = cv2.boundingRect(movement_envelope)
@@ -150,11 +128,19 @@ while True:
 
                 # Crop
                 # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
-                code_img = img[y: y + h, x: x + w]
+                code_img = img_grey[y: y + h, x: x + w]
 
                 # Read
-                code = zbarlight.scan_codes('qrcode', Image.fromarray(img_grey))
-                print(code)
+                code = zbarlight.scan_codes('qrcode', Image.fromarray(code_img))
+                # print(code, type(code), type(code[0]))
+                if code == None:
+                    code = '<>'
+                else:
+                    code = int(code[0])
+
+                # Draw the data
+                cv2.putText(img, u"{0:.1f} deg {1}, code: {2}".format(orientation, position, code), tuple(position),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4)
 
                 # Now add it to our list of qr tags
                 qr_tags += [{'box': qr_box,
@@ -164,9 +150,6 @@ while True:
                              'buddy2': buddy2_c,
                              'code': code
                              }]
-
-
-
 
     # Publish all data in a service on another thread, to which robots can connect.
 
