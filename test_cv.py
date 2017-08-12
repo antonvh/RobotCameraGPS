@@ -3,10 +3,16 @@
 import cv2
 import numpy as np
 import time
+import zbarlight
+from PIL import Image
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
+# cv2.namedWindow("QR", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
-
+dst = np.array([[0, 0],
+                [200, 0],
+                [200, 200],
+                [0, 200]])
 
 def atan2_vec(vector):
     return np.arctan2(vector[1], vector[0])/3.1415*180
@@ -15,6 +21,7 @@ n = 100 # Number of loops to wait for time calculation
 t = time.time()
 # Capture frames from the camera
 trackers = []
+qr_tags = []
 while True:
 
     ok, img = cap.read()
@@ -86,7 +93,6 @@ while True:
     # Find markers that belong together
     for m in markers:
         for b in markers:
-            # print(m)
             for c in markers[m]['buddy_centers']:
                 distance = c - markers[b]['center']
                 if all(np.array([-5, -5]) < distance) and all(distance < np.array([5, 5])):
@@ -95,12 +101,9 @@ while True:
 
     for mkey in markers:
         marker = markers[mkey]
-        if __name__ == '__main__':
-            if len(marker['buddies']) == 2:
+        if len(marker['buddies']) == 2:
                 buddy1_c = markers[marker['buddies'][0]]['center']
                 buddy2_c = markers[marker['buddies'][1]]['center']
-                cv2.circle(img, tuple(buddy1_c.astype(int)), 5, (0, 255,))
-                cv2.circle(img, tuple(buddy2_c.astype(int)), 5, (0, 255,))
 
                 # Calculate normalized vectors pointing to the two buddy markers from the main marker.
                 direction1 = (marker['center']-buddy1_c)
@@ -115,33 +118,55 @@ while True:
                 # Converting the float tuple to an int tuple with a list comprehension
                 position = ((buddy1_c + buddy2_c)/2).astype(int)
 
-                # Draw the result
-                cv2.drawContours(img, [marker['contour']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
-                cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), tuple(position), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 4)
+                # Draw the data
+                cv2.putText(img, u"{0:.1f} deg {1}".format(orientation, position), tuple(position),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4)
 
-                # Read qr code content
-                # bbox = cv2.boundingRect(np.concatenate((marker['contour'],
-                #                                         markers[marker['buddies'][0]]['contour'],
-                #                                         markers[marker['buddies'][1]]['contour']
-                #                                         ), axis=0))
-                # p1 = (int(bbox[0]), int(bbox[1]))
-                # p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                # cv2.rectangle(img, p1, p2, (0, 0, 255))
+                # Let's mak a box at origin, connecting the marker centers.
                 a = (marker['center']-position)
                 b = (buddy1_c-position)
                 c = - a
                 d = (buddy2_c-position)
-                box = np.array([a,b,c,d])
-                # Straighten
-                # Using cv2.remap ?
 
-                # Zbar
-                # In a separate thread?
+                qr_box = np.array([a, b, c, d])
 
-                # Start a tracker
-                # tracker = cv2.Tracker_create("MIL")
-                # ok = tracker.init(img, bbox)
-                # trackers += [tracker]
+                # scale it up to include the whole code
+                qr_box = (qr_box * 1.55).astype(int)
+                movement_envelope = (qr_box * 1.1).astype(int)
+
+                # put it back in place
+                qr_box += position
+                movement_envelope += position
+
+                # check result
+                cv2.drawContours(img, [qr_box, movement_envelope], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
+
+                # Read QR
+                bound = cv2.boundingRect(movement_envelope)
+                y = bound[1]
+                h = bound[3]
+                x = bound[0]
+                w = bound[2]
+
+                # Crop
+                # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
+                code_img = img[y: y + h, x: x + w]
+
+                # Read
+                code = zbarlight.scan_codes('qrcode', Image.fromarray(img_grey))
+                print(code)
+
+                # Now add it to our list of qr tags
+                qr_tags += [{'box': qr_box,
+                             'move_env' : movement_envelope,
+                             'topleft': marker['center'],
+                             'buddy1': buddy1_c,
+                             'buddy2': buddy2_c,
+                             'code': code
+                             }]
+
+
+
 
     # Publish all data in a service on another thread, to which robots can connect.
 
