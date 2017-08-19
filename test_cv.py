@@ -49,6 +49,7 @@ while True:
         # Look for nested squares
         while (hierarchy[0][k][2] != -1):
             # As long as k has children [2], find that child and look for children again.
+            # http://docs.opencv.org/3.1.0/d9/d8b/tutorial_py_contours_hierarchy.html
             k = hierarchy[0][k][2]
             c = c + 1
 
@@ -56,8 +57,9 @@ while True:
             c = c + 1
 
         if c >= 2:
+            # To do: also check if it runs *exactly* 2 children deep. and not more.
+            # This marker has at least two children. Now let's check if it's square.
             approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.02, True)
-            # approxPolyDP(Mat(contours[i]), approx, arcLength(Mat(contours[i]), true) * 0.02, true);
             if len(approx) == 4:
                 # We found a squarish object
                 # print(approx)
@@ -68,88 +70,40 @@ while True:
                 center = (a+c)/2
                 markers[x] = {'contour': approx,
                               'center': center,
-                              'buddy_centers': [center+(a-b)*2, center+(b-c)*2, center+(c-d)*2, center+(d-a)*2],
-                              'buddies': []
+                              'buddies': [],
+                              'front': contours[hierarchy[0][hierarchy[0][x][2]][2]] #Sorry.
                               }
-
-    # Find markers that belong together
-    for m in markers:
-        for b in markers:
-            for c in markers[m]['buddy_centers']:
-                distance = c - markers[b]['center']
-                if all(np.array([-5, -5]) < distance) and all(distance < np.array([5, 5])):
-                    # We found a buddy marker!
-                    markers[m]['buddies'] += [b]
 
     for mkey in markers:
         marker = markers[mkey]
-        if len(marker['buddies']) == 2:
-                buddy1_c = markers[marker['buddies'][0]]['center']
-                buddy2_c = markers[marker['buddies'][1]]['center']
+        # Calculate normalized vectors pointing to the two buddy markers from the main marker.
+        # direction1 = (marker['center']-buddy1_c)
+        # direction1 /= np.linalg.norm(direction1)
+        # direction2 = (marker['center'] - buddy2_c)
+        # direction2 /= np.linalg.norm(direction2)
 
-                # Calculate normalized vectors pointing to the two buddy markers from the main marker.
-                direction1 = (marker['center']-buddy1_c)
-                direction1 /= np.linalg.norm(direction1)
-                direction2 = (marker['center'] - buddy2_c)
-                direction2 /= np.linalg.norm(direction2)
+        # The orientation wil be the sum of the two vectors + 135 degrees
+        # orientation = atan2_vec(direction1 + direction2) + 135
 
-                # The orientation wil be the sum of the two vectors + 135 degrees
-                orientation = atan2_vec(direction1 + direction2) + 135
+        # The position is in the middle (average) of the two buddy markers.
+        # Converting the float tuple to an int tuple with a list comprehension
+        position = marker['center'].astype(int)
 
-                # The position is in the middle (average) of the two buddy markers.
-                # Converting the float tuple to an int tuple with a list comprehension
-                position = ((buddy1_c + buddy2_c)/2).astype(int)
+        # scale it up to include the whole code
+        # qr_box = (qr_box * 1.55).astype(int)
+        # movement_envelope = (qr_box * 1.1).astype(int)
 
-                # Let's mak a box at origin, connecting the marker centers.
-                a = (marker['center']-position)
-                b = (buddy1_c-position)
-                c = - a
-                d = (buddy2_c-position)
+        # put it back in place
+        # qr_box += position
+        # movement_envelope += position
 
-                qr_box = np.array([a, b, c, d])
+        # check result
+        cv2.drawContours(img, [marker['contour'], marker['front']], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
 
-                # scale it up to include the whole code
-                qr_box = (qr_box * 1.55).astype(int)
-                movement_envelope = (qr_box * 1.1).astype(int)
+        # Draw the data
+        cv2.putText(img, u"{0:.1f} deg {1}, code: {2}".format(0, position, 0), tuple(position),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4)
 
-                # put it back in place
-                qr_box += position
-                movement_envelope += position
-
-                # check result
-                # cv2.drawContours(img, [qr_box, movement_envelope], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
-
-                # Read QR
-                bound = cv2.boundingRect(movement_envelope)
-                y = bound[1]
-                h = bound[3]
-                x = bound[0]
-                w = bound[2]
-
-                # Crop
-                # NOTE: its img[y: y + h, x: x + w] and *not* img[x: x + w, y: y + h]
-                code_img = img_grey[y: y + h, x: x + w]
-
-                # Read
-                code = zbarlight.scan_codes('qrcode', Image.fromarray(code_img))
-                # print(code, type(code), type(code[0]))
-                if code == None:
-                    code = '<>'
-                else:
-                    code = int(code[0])
-
-                # Draw the data
-                cv2.putText(img, u"{0:.1f} deg {1}, code: {2}".format(orientation, position, code), tuple(position),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4)
-
-                # Now add it to our list of qr tags
-                qr_tags += [{'box': qr_box,
-                             'move_env' : movement_envelope,
-                             'topleft': marker['center'],
-                             'buddy1': buddy1_c,
-                             'buddy2': buddy2_c,
-                             'code': code
-                             }]
 
     # Publish all data in a service on another thread, to which robots can connect.
 
