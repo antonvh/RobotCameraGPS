@@ -107,10 +107,18 @@ while True:
                 # b4 = (center + np.dot(np.array([0.375, 0.3]) * shortest, R)).astype(int)
                 # locations = [b1, b2, b3, b4]
 
-                locations = [(center + np.dot(np.array(l) * shortest, R)).astype(int) for l in [[-0.375, 0.3],
-                                                                                                [-0.125, 0.3],
-                                                                                                [0.125, 0.3],
-                                                                                                [0.375, 0.3]]]
+                # Shorter notation:
+                # locations = [(center + np.dot(np.array(l) * shortest, R)).astype(int) for l in [[-0.375, 0.3],
+                #                                                                                 [-0.125, 0.3],
+                #                                                                                 [0.125, 0.3],
+                #                                                                                 [0.375, 0.3]]]
+
+                # Even shorter with only linear algebra? Todo.
+                relative_code_positions = np.array([[-0.375, 0.3],
+                                                    [-0.125, 0.3],
+                                                    [0.125, 0.3],
+                                                    [0.375, 0.3]])
+                locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
                 code = 0
                 for i in range(4):
