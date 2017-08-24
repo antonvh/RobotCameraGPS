@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import time
 from threading import Thread
-import select, socket
+import select, socket, sys
 try:
     import cPickle as pickle
 except:
@@ -15,14 +15,14 @@ import logging
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
-robot_data = {}
+robot_positions = {}
 PORT = 50007        # data port
 RECV_BUFFER = 4096  # Block size
 logging.basicConfig(filename='position_server.log',     # Filename
                     filemode='w',                       # Start each run with a fresh log
                     format='%(asctime)s, %(levelname)s, %(message)s',
                     datefmt='%H:%M:%S',
-                    level=logging.DEBUG, )              # Log info, debug and warning
+                    level=logging.INFO, )              # Log info, and warning
 running = True
 
 ### Helper functions ###
@@ -74,13 +74,14 @@ class SocketThread(Thread):
                         try:
                             # In Windows, sometimes when a TCP program closes abruptly,
                             # a "Connection reset by peer" exception will be thrown
-
-                            answer = ["OK"]
-                            send_data = pickle.dumps(answer)
                             data = sock.recv(RECV_BUFFER)
-                            sock.send(send_data)
                             rcvd_dict = pickle.loads(data)
                             logging.debug("Reveived socket data %s" % rcvd_dict)
+
+                            # answer = ["OK"]
+                            # send_data = pickle.dumps(answer)
+                            # sock.send(send_data)
+
 
                         # client disconnected, so remove it from socket list
                         except:
@@ -88,8 +89,21 @@ class SocketThread(Thread):
                             sock.close()
                             self.connection_list.remove(sock)
                             break
+
+                for sock in write_sockets:
+                    try:
+                        send_data = pickle.dumps(robot_positions)
+                        sock.send(send_data)
+
+                    except:
+                        logging.info("Client %s is offline" % addr)
+                        sock.close()
+                        self.connection_list.remove(sock)
+                        break
+
             except:
-                logging.warning("Socket thread stopped unexpectedly")
+                e = sys.exc_info()[0]
+                logging.warning("Socket thread stopped unexpectedly %s" % e)
 
 
 
@@ -105,10 +119,12 @@ while True:
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # print("read greyscale", t - time.time())
+    # logging.debug("read greyscale", t - time.time())
     # Otsu's thresholding. Nice & fast!
     # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
     # values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # Simple adaptive mean thresholding
     values, img_grey = cv2.threshold(img_grey, 100, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
 
     # Find contours and tree
@@ -117,8 +133,7 @@ while True:
     # print("found contours", t - time.time())
     img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
-    # Find square contours with at least 2 children. These must be qr markers!
-    markers = {}
+    # Find triangular contours with at least 2 children. These must be our markers!
     for x in range(0, len(contours)):
 
         k = x
@@ -180,50 +195,49 @@ while True:
                 #                                                                                 [0.125, 0.3],
                 #                                                                                 [0.375, 0.3]]]
 
-                # Even shorter with only linear algebra? Todo.
+                # Even shorter with only linear algebra.
                 relative_code_positions = np.array([[-0.375, 0.3],
                                                     [-0.125, 0.3],
                                                     [0.125, 0.3],
                                                     [0.375, 0.3]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
+                # Visually check our locations matrix math...
+                for l in locations:
+                    cv2.circle(img, tuple(l), 4, (0, 255, 0), -1)
+
                 code = 0
                 for i in range(4):
                     try:
                         p = img_grey[locations[i][1], locations[i][0]]
-                    except:
+                    except: # The needed pixel is probably outside the image.
                         code = -1
                         break
                     if not p:
                         code += 2**i
 
-                # Check locations
-                for l in locations:
-                    cv2.circle(img, tuple(l), 4, (0, 255, 0), -1)
-
                 # Draw the data
                 cv2.putText(img, u"{0:.2f} rad, code: {1}".format(direction, code), tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
 
+                # Save the data in our global dictionary
+                robot_positions[code] = {'contour': approx,
+                                         'center': center,
+                                         'front': front,
+                                         'direction': int(direction * 180 / 3.1415),
+                                         }
 
-                markers[x] = {'contour': approx,
-                              'center': center,
-                              'front': front,
-                              'direction': int(direction*180/3.1415),
-                              'code': code
-                              }
+    # logging.debug("found markers", t - time.time())
 
-    # print("found markers", t - time.time())
+    cv2.drawContours(img, [robot_positions[x]['contour'] for x in robot_positions],
+                     -1,
+                     (0, 0, 255),
+                     3,
+                     lineType=cv2.LINE_4)
 
-    cv2.drawContours(img, [markers[x]['contour'] for x in markers], -1, (0, 0, 255), 3, lineType=cv2.LINE_4)
+    # logging.debug("drawn contours", t - time.time())
 
-
-
-
-                # Publish all data in a service on another thread, to which robots can connect.
-
-    # print("drawn contours", t - time.time())
-    # Check all calculations in a preview window
+    # Show all calculations in the preview window
     cv2.imshow("cam", img)
 
     # print("shown image", t - time.time())
@@ -241,3 +255,5 @@ while True:
 
 ### clean up ###
 running = False
+cap.release()
+cv2.destroyAllWindows()
