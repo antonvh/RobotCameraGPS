@@ -16,14 +16,16 @@ import logging
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
 robot_positions = {}
-PORT = 50007        # data port
+PORT = 50008        # data port
 RECV_BUFFER = 4096  # Block size
-logging.basicConfig(filename='position_server.log',     # Filename
+logging.basicConfig(#filename='position_server.log',     # To a file
                     filemode='w',                       # Start each run with a fresh log
                     format='%(asctime)s, %(levelname)s, %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.INFO, )              # Log info, and warning
 running = True
+n = 100             # Number of loops to wait for time calculation
+t = time.time()
 
 ### Helper functions ###
 def atan2_vec(vector):
@@ -45,19 +47,27 @@ def pixel(img_grey, vector):
 
 class SocketThread(Thread):
     def __init__(self):
-        Thread.__init__(self)
         # Initialize server socket
         self.connection_list = []
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind(("0.0.0.0", PORT))
-        self.server_socket.listen(10)
+        self.server_socket.setblocking(0)
+        self.server_socket.listen(10) #It controls the number of incoming connections that are kept "waiting" if the program is already busy.
+        self.connection_list.append(self.server_socket)
+        logging.info("Chat server started on port %s" % str(PORT))
+        Thread.__init__(self)
 
     def run(self):
-        global robot_data, running
+        global robot_positions, running
+
         while running:
+            print(running)
             try:
                 # Get the list sockets which are ready to be read through select
-                read_sockets, write_sockets, error_sockets = select.select(self.connection_list, [], [])
+                read_sockets, write_sockets, error_sockets = select.select(self.connection_list, # Potential reads
+                                                                           self.connection_list, # Potential writes
+                                                                           [], #Potential errors
+                                                                           1) #Timeout
                 for sock in read_sockets:
 
                     # New connection
@@ -105,12 +115,18 @@ class SocketThread(Thread):
                 e = sys.exc_info()[0]
                 logging.warning("Socket thread stopped unexpectedly %s" % e)
 
+        for sock in self.connection_list:
+            sock.close()
+        logging.info("Socket server stopped")
 
 
 
-n = 100 # Number of loops to wait for time calculation
-t = time.time()
+### Start it all up ###
+socket_server = SocketThread()
+socket_server.start()
+
 while True:
+    robot_positions = {}
 
     ok, img = cap.read()
     if not ok:
@@ -240,20 +256,22 @@ while True:
     # Show all calculations in the preview window
     cv2.imshow("cam", img)
 
-    # print("shown image", t - time.time())
+    # logging.debug("shown image", t - time.time())
     # Wait for the 'q' key. Dont use ctrl-c !!!
     keypress = cv2.waitKey(1) & 0xFF
     if keypress == ord('q'):
         break
     if n == 0:
-        print("Looptime",(time.time()-t)/100)
+        logging.info("Looptime: {0}, contours: {1}".format((time.time()-t)/100, len(contours)))
         n = 100
         t = time.time()
         # break
     else:
         n -= 1
 
+
 ### clean up ###
 running = False
 cap.release()
 cv2.destroyAllWindows()
+logging.info("Cleaned up")
