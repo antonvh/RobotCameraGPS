@@ -11,6 +11,7 @@ except:
     import pickle
 import logging
 
+
 ### Initialize ###
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
