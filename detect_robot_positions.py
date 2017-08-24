@@ -3,19 +3,36 @@
 import cv2
 import numpy as np
 import time
-import zbarlight
-from PIL import Image
+from threading import Thread
+import select, socket
+try:
+    import cPickle as pickle
+except:
+    import pickle
+import logging
+
+### Initialize ###
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
+robot_data = {}
+PORT = 50007        # data port
+RECV_BUFFER = 4096  # Block size
+logging.basicConfig(filename='position_server.log',     # Filename
+                    filemode='w',                       # Start each run with a fresh log
+                    format='%(asctime)s, %(levelname)s, %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG, )              # Log info, debug and warning
+running = True
 
-
+### Helper functions ###
 def atan2_vec(vector):
     return np.arctan2(vector[0], vector[1])
 
 
 def vec_length(vector):
     return np.dot(vector, vector)**0.5
+
 
 def pixel(img_grey, vector):
     if img_grey[vector[1], vector[0]]:
@@ -24,16 +41,66 @@ def pixel(img_grey, vector):
         return 0
 
 
+### Thread(s) ###
+
+class SocketThread(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        # Initialize server socket
+        self.connection_list = []
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind(("0.0.0.0", PORT))
+        self.server_socket.listen(10)
+
+    def run(self):
+        global robot_data, running
+        while running:
+            try:
+                # Get the list sockets which are ready to be read through select
+                read_sockets, write_sockets, error_sockets = select.select(self.connection_list, [], [])
+                for sock in read_sockets:
+
+                    # New connection
+                    if sock == self.server_socket:
+                        # Handle the case in which there is a new connection recieved through server_socket
+                        sockfd, addr = self.server_socket.accept()
+                        self.connection_list.append(sockfd)
+                        logging.info("Client %s connected" % addr)
+
+
+                    # Some incoming message from a connected client
+                    else:
+                        # Data recieved from client, process it
+                        try:
+                            # In Windows, sometimes when a TCP program closes abruptly,
+                            # a "Connection reset by peer" exception will be thrown
+
+                            answer = ["OK"]
+                            send_data = pickle.dumps(answer)
+                            data = sock.recv(RECV_BUFFER)
+                            sock.send(send_data)
+                            rcvd_dict = pickle.loads(data)
+                            logging.debug("Reveived socket data %s" % rcvd_dict)
+
+                        # client disconnected, so remove it from socket list
+                        except:
+                            logging.info("Client %s is offline" % addr)
+                            sock.close()
+                            self.connection_list.remove(sock)
+                            break
+            except:
+                logging.warning("Socket thread stopped unexpectedly")
+
+
+
+
 n = 100 # Number of loops to wait for time calculation
 t = time.time()
-# Capture frames from the camera
-
 while True:
-    # t = time.time()
 
     ok, img = cap.read()
     if not ok:
-        continue # anyway
+        continue    #and try again.
 
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -172,7 +239,5 @@ while True:
     else:
         n -= 1
 
-
-# When everything is done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+### clean up ###
+running = False
