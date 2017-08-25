@@ -4,13 +4,14 @@ import cv2
 import numpy as np
 import time
 from threading import Thread
-import select, socket, sys
+import select, socket, sys, struct
 try:
     import cPickle as pickle
 except:
     import pickle
 import logging
 
+from multiprocessing.connection import Listener
 
 ### Initialize ###
 
@@ -19,7 +20,7 @@ cap = cv2.VideoCapture(0)
 robot_positions = {}
 PORT = 50008        # data port
 RECV_BUFFER = 4096  # Block size
-logging.basicConfig(#filename='position_server.log',     # To a file
+logging.basicConfig(#filename='position_server.log',     # To a file. Or not.
                     filemode='w',                       # Start each run with a fresh log
                     format='%(asctime)s, %(levelname)s, %(message)s',
                     datefmt='%H:%M:%S',
@@ -62,7 +63,6 @@ class SocketThread(Thread):
         global robot_positions, running
 
         while running:
-            print(running)
             try:
                 # Get the list sockets which are ready to be read through select
                 read_sockets, write_sockets, error_sockets = select.select(self.connection_list, # Potential reads
@@ -76,19 +76,20 @@ class SocketThread(Thread):
                         # Handle the case in which there is a new connection recieved through server_socket
                         sockfd, addr = self.server_socket.accept()
                         self.connection_list.append(sockfd)
-                        logging.info("Client %s connected" % addr)
+                        logging.info("Client {0} connected".format(addr))
 
 
                     # Some incoming message from a connected client
                     else:
                         # Data recieved from client, process it
                         try:
+                            pass
                             # In Windows, sometimes when a TCP program closes abruptly,
                             # a "Connection reset by peer" exception will be thrown
                             data = sock.recv(RECV_BUFFER)
                             rcvd_dict = pickle.loads(data)
-                            logging.debug("Reveived socket data %s" % rcvd_dict)
-
+                            logging.debug("Reveived socket data {0}".format(rcvd_dict))
+                            #
                             # answer = ["OK"]
                             # send_data = pickle.dumps(answer)
                             # sock.send(send_data)
@@ -96,25 +97,29 @@ class SocketThread(Thread):
 
                         # client disconnected, so remove it from socket list
                         except:
-                            logging.info("Client %s is offline" % addr)
+                            logging.info("Client {0} is offline".format(addr))
                             sock.close()
                             self.connection_list.remove(sock)
                             break
 
                 for sock in write_sockets:
                     try:
+
                         send_data = pickle.dumps(robot_positions)
+                        length = struct.pack('!I', len(send_data))
+                        send_data = length + send_data
                         sock.send(send_data)
+                        # data = sock.recv(RECV_BUFFER)
 
                     except:
-                        logging.info("Client %s is offline" % addr)
+                        logging.info("Client {0} is offline".format(addr))
                         sock.close()
                         self.connection_list.remove(sock)
                         break
 
             except:
                 e = sys.exc_info()[0]
-                logging.warning("Socket thread stopped unexpectedly %s" % e)
+                logging.warning("Socket thread stopped unexpectedly {0}".format(e))
 
         for sock in self.connection_list:
             sock.close()
@@ -125,6 +130,9 @@ class SocketThread(Thread):
 ### Start it all up ###
 socket_server = SocketThread()
 socket_server.start()
+# server_sock = Listener(('localhost', PORT))
+# conn = server_sock.accept()
+
 
 while True:
     robot_positions = {}
@@ -243,7 +251,6 @@ while True:
                                          'front': front,
                                          'direction': int(direction * 180 / 3.1415),
                                          }
-
     # logging.debug("found markers", t - time.time())
 
     cv2.drawContours(img, [robot_positions[x]['contour'] for x in robot_positions],
