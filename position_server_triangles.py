@@ -29,6 +29,7 @@ running = True
 n = 100             # Number of loops to wait for time calculation
 t = time.time()
 
+
 ### Helper functions ###
 def atan2_vec(vector):
     return np.arctan2(vector[0], vector[1])
