@@ -5,11 +5,12 @@ import numpy as np
 import time
 from threading import Thread
 import select, socket, sys, struct
+import logging
 try:
     import cPickle as pickle
 except:
     import pickle
-import logging
+
 
 from multiprocessing.connection import Listener
 
@@ -57,7 +58,7 @@ class SocketThread(Thread):
         self.server_socket.setblocking(0)
         self.server_socket.listen(10) #It controls the number of incoming connections that are kept "waiting" if the program is already busy.
         self.connection_list.append(self.server_socket)
-        logging.info("Chat server started on port %s" % str(PORT))
+        logging.info("Position server started on port %s" % str(PORT))
         Thread.__init__(self)
 
     def run(self):
