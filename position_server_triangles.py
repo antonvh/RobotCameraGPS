@@ -32,7 +32,7 @@ t = time.time()
 
 ### Helper functions ###
 def atan2_vec(vector):
-    return np.arctan2(vector[0], vector[1])
+    return -np.arctan2(vector[1], vector[0])
 
 
 def vec_length(vector):
@@ -204,13 +204,13 @@ while True:
                 # Rotation matrix
                 c = np.cos(heading)
                 s = np.sin(heading)
-                R = np.array([[-c, s], [-s, -c]])
+                R = np.array([[-s, -c], [-c, s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
-                relative_code_positions = np.array([[-0.375, 0.325],
-                                                    [-0.125, 0.325],
-                                                    [0.125, 0.325],
-                                                    [0.375, 0.325]])
+                relative_code_positions = np.array([[-0.375, 0.35],
+                                                    [-0.125, 0.35],
+                                                    [0.125, 0.35],
+                                                    [0.375, 0.35]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
                 # Visually check our locations matrix math...
@@ -255,7 +255,7 @@ while True:
     # logging.debug("shown image", t - time.time())
 
     # Wait for the 'q' key. Dont use ctrl-c !!!
-    keypress = cv2.waitKey(0) & 0xFF
+    keypress = cv2.waitKey(1) & 0xFF
     if keypress == ord('q'):
         break
     if n == 0:
