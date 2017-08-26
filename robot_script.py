@@ -6,6 +6,7 @@ import time
 import logging
 from math import sin, cos
 import numpy as np
+import ev3dev.auto as ev3
 try:
     import cPickle as pickle
 except:
@@ -27,6 +28,8 @@ logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
     datefmt='%H:%M:%S',
     level=logging.INFO, )                                   # Log info, and warning
 
+left_motor = ev3.LargeMotor(ev3.OUTPUT_B)
+right_motor = ev3.LargeMotor(ev3.OUTPUT_C)
 
 ### Helpers ###
 def vec2d_length(vector):
@@ -119,16 +122,19 @@ while 1:
                     break #no more points to be had
                 path = target - nose
             target_direction = vec2d_angle(heading) - vec2d_angle(path)
-            turnrate = clamp(vec2d_length(path) * sin(target_direction), (-400,400))
+            turnrate = clamp(vec2d_length(path) * sin(target_direction), (-400, 400))
             speed = clamp(vec2d_length(path) * cos(target_direction), (-300, 300))
-            motorL = speed + turnrate
-            motorR = speed - turnrate
+            left_motor.run_forever(speed_sp=speed + turnrate)
+            left_motor.run_forever(speed_sp=speed - turnrate)
         else:
-            motorL = 0
-            motorR = 0
+            left_motor.stop()
+            right_motor.stop()
     except:
         # Something went wrong or user aborted the script
         break
 
+# Clean up
+left_motor.stop()
+right_motor.stop()
 logging.info("Cleaning up")
 running = False
