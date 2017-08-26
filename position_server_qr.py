@@ -26,12 +26,6 @@ while True:
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # # find edges and dilate. Nice & fast!
-    # img_grey = cv2.Canny(img_grey, 100, 200)
-    # img_grey = cv2.dilate(img_grey, np.ones((3, 3)))
-
-    # OR...
-
     # Otsu's thresholding. Nice & fast!
     # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
     values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -152,6 +146,7 @@ while True:
                              }]
 
     # Publish all data in a service on another thread, to which robots can connect.
+    # TODO
 
     # Check all calculations in a preview window
     cv2.imshow("cam", img)
@@ -169,6 +164,6 @@ while True:
         n -= 1
 
 
-# When everything is done, release the capture
+# When everything is done, release and clean up
 cap.release()
 cv2.destroyAllWindows()
