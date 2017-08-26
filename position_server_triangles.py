@@ -131,9 +131,6 @@ class SocketThread(Thread):
 ### Start it all up ###
 socket_server = SocketThread()
 socket_server.start()
-# server_sock = Listener(('localhost', PORT))
-# conn = server_sock.accept()
-
 
 while True:
     robot_positions = {}
@@ -141,6 +138,7 @@ while True:
     ok, img = cap.read()
     if not ok:
         continue    #and try again.
+    height = np.size(img, 0)
 
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -200,32 +198,19 @@ while True:
                     front = b
 
                 center = center.astype(int)
-                direction = atan2_vec(front-center)
+                heading = atan2_vec(front - center)
 
                 # Now read code
                 # Rotation matrix
-                c = np.cos(direction)
-                s = np.sin(direction)
+                c = np.cos(heading)
+                s = np.sin(heading)
                 R = np.array([[-c, s], [-s, -c]])
 
-                # Find the relative locations of the code dots
-                # b1 = (center + np.dot(np.array([-0.375, 0.3]) * shortest, R)).astype(int)
-                # b2 = (center + np.dot(np.array([-0.125, 0.3]) * shortest, R)).astype(int)
-                # b3 = (center + np.dot(np.array([0.125, 0.3]) * shortest, R)).astype(int)
-                # b4 = (center + np.dot(np.array([0.375, 0.3]) * shortest, R)).astype(int)
-                # locations = [b1, b2, b3, b4]
-
-                # Shorter notation:
-                # locations = [(center + np.dot(np.array(l) * shortest, R)).astype(int) for l in [[-0.375, 0.3],
-                #                                                                                 [-0.125, 0.3],
-                #                                                                                 [0.125, 0.3],
-                #                                                                                 [0.375, 0.3]]]
-
-                # Even shorter with only linear algebra.
-                relative_code_positions = np.array([[-0.375, 0.3],
-                                                    [-0.125, 0.3],
-                                                    [0.125, 0.3],
-                                                    [0.375, 0.3]])
+                # Calculate the relative position of the code dots with some linear algebra.
+                relative_code_positions = np.array([[-0.375, 0.325],
+                                                    [-0.125, 0.325],
+                                                    [0.125, 0.325],
+                                                    [0.375, 0.325]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
                 # Visually check our locations matrix math...
@@ -243,14 +228,16 @@ while True:
                         code += 2**i
 
                 # Draw the data
-                cv2.putText(img, u"{0:.2f} rad, code: {1}".format(direction, code), tuple(center),
+                cv2.putText(img,
+                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, code, center[0], height-center[1]),
+                            tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
 
                 # Save the data in our global dictionary
                 robot_positions[code] = {'contour': approx,
-                                         'center': center,
-                                         'front': front,
-                                         'direction': int(direction * 180 / 3.1415),
+                                         'center': (center[0], height-center[1]),
+                                         'front': (front[0], height-front[1]),
+                                         'heading': heading, # In Radians, 0 is along x axis, positive is ccw
                                          }
     # logging.debug("found markers", t - time.time())
 
@@ -266,15 +253,15 @@ while True:
     cv2.imshow("cam", img)
 
     # logging.debug("shown image", t - time.time())
+
     # Wait for the 'q' key. Dont use ctrl-c !!!
-    keypress = cv2.waitKey(1) & 0xFF
+    keypress = cv2.waitKey(0) & 0xFF
     if keypress == ord('q'):
         break
     if n == 0:
         logging.info("Looptime: {0}, contours: {1}".format((time.time()-t)/100, len(contours)))
         n = 100
         t = time.time()
-        # break
     else:
         n -= 1
 

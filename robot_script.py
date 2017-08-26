@@ -5,6 +5,7 @@ from threading import Thread
 import time
 import logging
 from math import sin, cos
+import numpy as np
 try:
     import cPickle as pickle
 except:
@@ -27,13 +28,32 @@ logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
     level=logging.INFO, )                                   # Log info, and warning
 
 
+### Helpers ###
+def vec2d_length(vector):
+    return np.dot(vector, vector)**0.5
+
+def vec2d_angle(vector):
+    return np.arctan2(vector[1], vector[0])
+
+def clamp(n, range):
+    """
+    Given a number and a range, return the number, or the extreme it is closest to.
+
+    :param n: number
+    :return: number
+    """
+    minn, maxn = range
+    return max(min(maxn, n), minn)
+
+
+
 ### Position generators ###
 def circle(origin, radius, step_px):
     circumference = radius * 2 * PI
     numsteps = int(circumference/step_px) + 1
     for i in range(numsteps):
         angle = 2 * PI / numsteps * i
-        coord = (cos(angle) * radius + origin[0], sin(angle) * radius + origin[1])
+        coord = np.array([cos(angle) * radius + origin[0], sin(angle) * radius + origin[1]])
         yield coord
 
 
@@ -87,23 +107,25 @@ while 1:
 
         if THIS_ROBOT in robot_positions:
             heading = robot_positions[THIS_ROBOT]['heading']
-            position = robot_positions[THIS_ROBOT]['position']
-            nose = robot_positions[THIS_ROBOT]['nose']
+            position = np.array(robot_positions[THIS_ROBOT]['position'])
+            nose = np.array(robot_positions[THIS_ROBOT]['front'])
+
             # Calculate vector from nose to target
             path = target-nose
-            if path < 2:
+            if vec2d_length(path) <= 2:
                 try:
                     target = next(positions)
                 except:
                     break #no more points to be had
                 path = target - nose
-            turnrate = length(path) * cos(heading)
-            speed = length(path) * sin(heading)
-            motorA = speed - turnrate
-            motorB = speed + turnrate
+            target_direction = vec2d_angle(heading) - vec2d_angle(path)
+            turnrate = clamp(vec2d_length(path) * sin(target_direction), (-400,400))
+            speed = clamp(vec2d_length(path) * cos(target_direction), (-300, 300))
+            motorL = speed + turnrate
+            motorR = speed - turnrate
         else:
-            motorA = 0
-            motorB = 0
+            motorL = 0
+            motorR = 0
     except:
         # Something went wrong or user aborted the script
         break
