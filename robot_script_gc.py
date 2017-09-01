@@ -7,6 +7,7 @@ import logging
 from math import sin, cos
 import numpy as np
 import ev3dev.auto as ev3
+from gcode import gcode_parser
 try:
     import cPickle as pickle
 except:
@@ -20,6 +21,7 @@ RETRY_DELAY = 3     # Seconds
 THIS_ROBOT = 1      # Our own ID
 PI = 3.1415
 TWO_PI = 2*PI
+gcodes = gcode_parser('ev3.nc')
 robot_positions = {}
 running = True
 logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
@@ -117,7 +119,7 @@ while 1:
             path = target-nose
             if vec2d_length(path) <= 2:
                 try:
-                    target = next(positions)
+                    target = np.array(next(gcodes)[:2])*10
                 except:
                     break #no more points to be had
                 path = target - nose
@@ -130,8 +132,6 @@ while 1:
             left_motor.stop()
             right_motor.stop()
     except:
-        e = sys.exc_info()[0]
-        logging.warning(e)
         # Something went wrong or user aborted the script
         break
 
