@@ -18,6 +18,7 @@ from multiprocessing.connection import Listener
 
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
+cap.set(3,1920)
 robot_positions = {}
 PORT = 50008        # data port
 RECV_BUFFER = 4096  # Block size
@@ -150,7 +151,7 @@ while True:
     # values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Simple adaptive mean thresholding
-    values, img_grey = cv2.threshold(img_grey, 100, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
+    values, img_grey = cv2.threshold(img_grey, 70, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -175,9 +176,15 @@ while True:
             c = c + 1
 
         if c == 2:
+
             # To do: also check if it runs *exactly* 2 children deep. and not more.
             # This marker has at least two children. Now let's check if it's a triangle.
-            approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.02, True)
+            approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.05, True)
+            cv2.drawContours(img, [approx],
+                             -1,
+                             (0, 255, 0),
+                             3,
+                             lineType=cv2.LINE_4)
             if len(approx) == 3:
                 # We found a squarish object too.
                 # Let it's corners be these vectors.
@@ -242,11 +249,11 @@ while True:
                                          }
     # logging.debug("found markers", t - time.time())
 
-    cv2.drawContours(img, [robot_positions[x]['contour'] for x in robot_positions],
-                     -1,
-                     (0, 0, 255),
-                     3,
-                     lineType=cv2.LINE_4)
+    # cv2.drawContours(img, [robot_positions[x]['contour'] for x in robot_positions],
+    #                  -1,
+    #                  (0, 0, 255),
+    #                  3,
+    #                  lineType=cv2.LINE_4)
 
     # logging.debug("drawn contours", t - time.time())
 
