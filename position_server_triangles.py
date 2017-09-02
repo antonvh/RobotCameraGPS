@@ -101,14 +101,14 @@ while True:
     # values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Simple adaptive mean thresholding
-    values, img_grey = cv2.threshold(img_grey, 150, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
+    values, img_grey = cv2.threshold(img_grey, 100, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # logging.debug("found contours", t - time.time())
 
     # Preview thresholded image
-    # img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
+    img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
     robot_positions = {}
     # Find triangular contours with at least 2 children. These must be our markers!

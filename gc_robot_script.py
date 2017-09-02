@@ -103,6 +103,7 @@ while 1:
             path = target-nose
             if vec2d_length(path) <= 2:
                 try:
+                    print(target, target[:2])
                     target = np.array(next(positions)[:2])
                 except:
                     break #no more points to be had
