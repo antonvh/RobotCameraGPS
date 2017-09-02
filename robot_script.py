@@ -90,7 +90,7 @@ while 1:
         # Putting this in a try statement because we need to clean up after ctrl-c
         # Motor code goes here
         # time.sleep(1)
-        print(robot_positions)
+        # print(robot_positions)
 
         if THIS_ROBOT in robot_positions:
             heading = robot_positions[THIS_ROBOT]['heading']
