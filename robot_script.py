@@ -106,11 +106,11 @@ while 1:
             #         break #no more points to be had
             #     path = target - nose
 
-            target_direction = heading - vec2d_angle(path)
+            target_direction = vec2d_angle(path) - heading
             # print(target_direction)
             turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-500, 500))
             speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-500, 500))
-            print(",".join([str(x) for x in [speed, turnrate, position[0], position[1], nose[0], nose[1], target[0], target[1], target_direction*180/PI, heading*180/PI, vec2d_angle(path)]]))
+            print(",".join([str(x) for x in [speed, turnrate, position[0], position[1], nose[0], nose[1], target[0], target[1], target_direction*180/PI, heading*180/PI, vec2d_angle(path)*180/PI]]))
             left_motor.run_forever(speed_sp=(speed + turnrate))
             right_motor.run_forever(speed_sp=(speed - turnrate))
         else:
