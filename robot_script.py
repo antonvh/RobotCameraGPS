@@ -14,10 +14,10 @@ except:
 
 
 ### Initialize ###
-HOST = "127.0.0.1"  # Location server
+HOST = "192.168.179.25"  # Location server
 PORT = 50008
 RETRY_DELAY = 3     # Seconds
-THIS_ROBOT = 1      # Our own ID
+THIS_ROBOT = 8      # Our own ID
 PI = 3.1415
 TWO_PI = 2*PI
 robot_positions = {}
@@ -85,6 +85,7 @@ def get_positions():
             length = struct.unpack('!I', buf)[0]
             data = s.recv(length)  # read all data
             robot_positions = pickle.loads(data)
+            s.send("OK")
         except:
             e = sys.exc_info()[0]
             logging.warning(e)
@@ -106,11 +107,11 @@ while 1:
         # Putting this in a try statement because we need to clean up after ctrl-c
         # Motor code goes here
         # time.sleep(1)
-        if len(robot_positions) > 0: print(robot_positions)
+        print(robot_positions)
 
         if THIS_ROBOT in robot_positions:
             heading = robot_positions[THIS_ROBOT]['heading']
-            position = np.array(robot_positions[THIS_ROBOT]['position'])
+            position = np.array(robot_positions[THIS_ROBOT]['center'])
             nose = np.array(robot_positions[THIS_ROBOT]['front'])
 
             # Calculate vector from nose to target
@@ -121,9 +122,10 @@ while 1:
                 except:
                     break #no more points to be had
                 path = target - nose
-            target_direction = vec2d_angle(heading) - vec2d_angle(path)
+            target_direction = heading - vec2d_angle(path)
             turnrate = clamp(vec2d_length(path) * sin(target_direction), (-400, 400))
-            speed = clamp(vec2d_length(path) * cos(target_direction), (-300, 300))
+            speed = clamp(vec2d_length(path) * cos(target_direction), (-500, 500))
+            # print(speed)
             left_motor.run_forever(speed_sp=speed + turnrate)
             left_motor.run_forever(speed_sp=speed - turnrate)
         else:
