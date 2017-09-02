@@ -81,7 +81,9 @@ get_positions_thread = Thread(target=get_positions)
 get_positions_thread.start()
 
 positions = circle((500,500), 200, 10)
-target = next(positions)
+# target = next(positions)
+
+target = np.array([1000, 500])
 
 while 1:
     try:
@@ -97,16 +99,16 @@ while 1:
 
             # Calculate vector from nose to target
             path = target-nose
-            if vec2d_length(path) <= 2:
-                try:
-                    target = next(positions)
-                except:
-                    break #no more points to be had
-                path = target - nose
+            # if vec2d_length(path) <= 2:
+            #     try:
+            #         target = next(positions)
+            #     except:
+            #         break #no more points to be had
+            #     path = target - nose
             target_direction = heading - vec2d_angle(path)
-            turnrate = clamp(vec2d_length(path) * sin(target_direction), (-400, 400))
-            speed = clamp(vec2d_length(path) * cos(target_direction), (-500, 500))
-            # print(speed)
+            turnrate = clamp(vec2d_length(path) * sin(target_direction) * 2, (-500, 500))
+            speed = clamp(vec2d_length(path) * cos(target_direction) * 2, (-500, 500))
+            print(speed, turnrate)
             left_motor.run_forever(speed_sp=speed + turnrate)
             left_motor.run_forever(speed_sp=speed - turnrate)
         else:
