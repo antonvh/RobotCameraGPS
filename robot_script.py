@@ -83,7 +83,7 @@ get_positions_thread.start()
 positions = circle((500,500), 200, 10)
 # target = next(positions)
 
-target = np.array([1000, 500])
+target = np.array([1920/2, 1080/2])
 
 while 1:
     try:
