@@ -106,11 +106,11 @@ while 1:
             #         break #no more points to be had
             #     path = target - nose
             target_direction = heading - vec2d_angle(path)
-            turnrate = clamp(vec2d_length(path) * sin(target_direction) * 2, (-500, 500))
-            speed = clamp(vec2d_length(path) * cos(target_direction) * 2, (-500, 500))
+            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -2, (-500, 500))
+            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-500, 500))
             print(speed, turnrate)
-            left_motor.run_forever(speed_sp=speed + turnrate)
-            left_motor.run_forever(speed_sp=speed - turnrate)
+            left_motor.run_forever(speed_sp=(speed + turnrate))
+            right_motor.run_forever(speed_sp=(speed - turnrate))
         else:
             left_motor.stop()
             right_motor.stop()
