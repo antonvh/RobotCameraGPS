@@ -89,7 +89,8 @@ while True:
     ok, img = cap.read()
     if not ok:
         continue    #and try again.
-    height = np.size(img, 0)
+    height, width = img.shape[:2]
+    # width = np.size(img, 1)
 
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -104,9 +105,10 @@ while True:
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # logging.debug("found contours", t - time.time())
 
-    # print("found contours", t - time.time())
-    img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
+    # Preview thresholded image
+    # img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
     robot_positions = {}
     # Find triangular contours with at least 2 children. These must be our markers!
@@ -130,11 +132,6 @@ while True:
             # To do: also check if it runs *exactly* 2 children deep. and not more.
             # This marker has at least two children. Now let's check if it's a triangle.
             approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.05, True)
-            cv2.drawContours(img, [approx],
-                             -1,
-                             (0, 255, 0),
-                             3,
-                             lineType=cv2.LINE_4)
             if len(approx) == 3:
                 # We found a squarish object too.
                 # Let it's corners be these vectors.
@@ -165,15 +162,13 @@ while True:
                 R = np.array([[-s, -c], [-c, s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
-                relative_code_positions = np.array([[-0.375, 0.35],
-                                                    [-0.125, 0.35],
+                relative_code_positions = np.array([[0.375, 0.35],
                                                     [0.125, 0.35],
-                                                    [0.375, 0.35]])
+                                                    [-0.125, 0.35],
+                                                    [-0.375, 0.35]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
-                # Visually check our locations matrix math...
-                for l in locations:
-                    cv2.circle(img, tuple(l), 4, (0, 255, 0), -1)
+
 
                 code = 0
                 for i in range(4):
@@ -190,6 +185,12 @@ while True:
                             u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, code, center[0], height-center[1]),
                             tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
+                # Draw binary code marker positions...
+                for l in locations:
+                    cv2.circle(img, tuple(l), 4, (0, 255, 0), -1)
+
+                #Draw the contour of our triangle
+                cv2.drawContours(img, [approx], -1, (0, 255, 0))
 
                 # Save the data in our global dictionary
                 robot_positions[code] = {'contour': approx,
@@ -199,13 +200,9 @@ while True:
                                          }
     # logging.debug("found markers", t - time.time())
 
-    # cv2.drawContours(img, [robot_positions[x]['contour'] for x in robot_positions],
-    #                  -1,
-    #                  (0, 0, 255),
-    #                  3,
-    #                  lineType=cv2.LINE_4)
-
-    # logging.debug("drawn contours", t - time.time())
+    # Draw the middle of the screen
+    cv2.line(img, (width // 2 - 20, height // 2), (width // 2 + 20, height // 2), (0, 0, 255), 3)
+    cv2.line(img, (width // 2, height // 2 - 20), (width // 2, height // 2 + 20), (0, 0, 255), 3)
 
     # Show all calculations in the preview window
     cv2.imshow("cam", img)
