@@ -20,8 +20,8 @@ cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
 cap.set(3,1920)
 robot_positions = {}
-PORT = 50008        # data port
-RECV_BUFFER = 4096  # Block size
+SERVER_ADDR = ("255.255.255.255", 50008)
+RECV_BUFFER = 128  # Block size
 logging.basicConfig(#filename='position_server.log',     # To a file. Or not.
                     filemode='w',                       # Start each run with a fresh log
                     format='%(asctime)s, %(levelname)s, %(message)s',
@@ -53,79 +53,28 @@ def pixel(img_grey, vector):
 class SocketThread(Thread):
     def __init__(self):
         # Initialize server socket
-        self.connection_list = []
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind(("0.0.0.0", PORT))
-        self.server_socket.setblocking(0)
-        self.server_socket.listen(10) #It controls the number of incoming connections that are kept "waiting" if the program is already busy.
-        self.connection_list.append(self.server_socket)
-        logging.info("Position server started on port %s" % str(PORT))
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        logging.info("Position server started on UDP {0}".format(SERVER_ADDR))
         Thread.__init__(self)
 
     def run(self):
         global robot_positions, running
 
         while running:
+            data = pickle.dumps(robot_positions)
+
             try:
-                # Get the list sockets which are ready to be read through select
-                read_sockets, write_sockets, error_sockets = select.select(self.connection_list, # Potential reads
-                                                                           self.connection_list, # Potential writes
-                                                                           [], #Potential errors
-                                                                           1) #Timeout
-                for sock in read_sockets:
-
-                    # New connection
-                    if sock == self.server_socket:
-                        # Handle the case in which there is a new connection recieved through server_socket
-                        sockfd, addr = self.server_socket.accept()
-                        self.connection_list.append(sockfd)
-                        logging.info("Client {0} connected".format(addr))
-
-
-                    # Some incoming message from a connected client
-                    else:
-                        # Data recieved from client, process it
-                        try:
-                            pass
-                            # In Windows, sometimes when a TCP program closes abruptly,
-                            # a "Connection reset by peer" exception will be thrown
-                            data = sock.recv(RECV_BUFFER)
-                            rcvd_dict = pickle.loads(data)
-                            logging.debug("Reveived socket data {0}".format(rcvd_dict))
-                            #
-                            # answer = ["OK"]
-                            # send_data = pickle.dumps(answer)
-                            # sock.send(send_data)
-
-
-                        # client disconnected, so remove it from socket list
-                        except:
-                            logging.info("Client {0} is offline".format(addr))
-                            sock.close()
-                            self.connection_list.remove(sock)
-                            break
-
-                for sock in write_sockets:
-                    try:
-
-                        send_data = pickle.dumps(robot_positions)
-                        length = struct.pack('!I', len(send_data))
-                        send_data = length + send_data
-                        sock.send(send_data)
-                        # data = sock.recv(RECV_BUFFER)
-
-                    except:
-                        logging.info("Client {0} is offline".format(addr))
-                        sock.close()
-                        self.connection_list.remove(sock)
-                        break
-
-            except:
-                e = sys.exc_info()[0]
-                logging.warning("Socket thread stopped unexpectedly {0}".format(e))
-
-        for sock in self.connection_list:
-            sock.close()
+                sent = self.server_socket.sendto(data, SERVER_ADDR)
+                # print(sent)
+                time.sleep(0.025)
+            except OSError as exc:
+                if exc.errno == 55:
+                    time.sleep(0.1)
+                else:
+                    raise
+        self.server_socket.close()
         logging.info("Socket server stopped")
 
 
@@ -135,7 +84,7 @@ socket_server = SocketThread()
 socket_server.start()
 
 while True:
-    robot_positions = {}
+
 
     ok, img = cap.read()
     if not ok:
@@ -159,6 +108,7 @@ while True:
     # print("found contours", t - time.time())
     img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
+    robot_positions = {}
     # Find triangular contours with at least 2 children. These must be our markers!
     for x in range(0, len(contours)):
 

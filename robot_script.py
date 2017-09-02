@@ -14,9 +14,7 @@ except:
 
 
 ### Initialize ###
-HOST = "192.168.179.25"  # Location server
 PORT = 50008
-RETRY_DELAY = 3     # Seconds
 THIS_ROBOT = 8      # Our own ID
 PI = 3.1415
 TWO_PI = 2*PI
@@ -63,36 +61,19 @@ def circle(origin, radius, step_px):
 ### Get robot positions from server ###
 def get_positions():
     global robot_positions, running
-    connected = False
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    while not connected and running:
-        try:
-            # Open socket to the location server
-            s.connect((HOST, PORT))
-        except:
-            logging.info("Connection to {1}:{2} failed. Trying again in {0}s...".format(RETRY_DELAY, HOST, PORT))
-            time.sleep(RETRY_DELAY)
-            continue        # Keep trying
-        connected = True    # Because we got past trying
-        logging.info("Connected to {0}:{1}".format(HOST, PORT))
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind(('', PORT))
 
     while running:
         try:
-            buf = b''
-            while len(buf) < 4:
-                buf += s.recv(4 - len(buf))
-
-            length = struct.unpack('!I', buf)[0]
-            data = s.recv(length)  # read all data
+            data, server = s.recvfrom(2048)
             robot_positions = pickle.loads(data)
-            s.send("OK")
         except:
             e = sys.exc_info()[0]
             logging.warning(e)
-            break
+            raise
 
-    if connected:
-        s.close()
+    s.close()
 
 
 ### Run the main loop ###
