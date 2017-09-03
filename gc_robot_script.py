@@ -71,7 +71,7 @@ get_positions_thread = Thread(target=get_positions)
 get_positions_thread.start()
 
 positions = gcode_parser('ev3.nc')
-target = np.array(next(positions)[:2])*10
+target = next(positions)[0] * 10
 
 while 1:
     try:
@@ -84,12 +84,14 @@ while 1:
 
             # Calculate vector from nose to target
             path = target-nose
+
             if vec2d_length(path) <= 2:
-                print(target, target[:2])
+                # Try to get a new target if we're close enough to the current one.
                 try:
-                    target = np.array(next(positions)[:2])*10
+                    target = next(positions)[0] * 10
                 except:
-                    break #no more points to be had
+                    # We've run of targets
+                    break
                 path = target - nose
 
             target_direction = vec2d_angle(path) - heading
