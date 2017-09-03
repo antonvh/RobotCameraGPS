@@ -6,6 +6,8 @@ import time
 from threading import Thread
 import select, socket, sys, struct
 import logging
+
+THRESH = 120
 try:
     import cPickle as pickle
 except:
@@ -101,7 +103,7 @@ while True:
     # values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Simple adaptive mean thresholding
-    values, img_grey = cv2.threshold(img_grey, 100, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
+    values, img_grey = cv2.threshold(img_grey, THRESH, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
 
     # Find contours and tree
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -162,10 +164,10 @@ while True:
                 R = np.array([[-s, -c], [-c, s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
-                relative_code_positions = np.array([[0.375, 0.35],
-                                                    [0.125, 0.35],
-                                                    [-0.125, 0.35],
-                                                    [-0.375, 0.35]])
+                relative_code_positions = np.array([[0.375, 0.37],
+                                                    [0.125, 0.37],
+                                                    [-0.125, 0.37],
+                                                    [-0.375, 0.37]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
 

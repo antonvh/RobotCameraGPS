@@ -56,7 +56,7 @@ def gcode_parser(filename, max_segment_length=1000):
                     #Interpolate
                     steps = int(pathlength/max_segment_length)
                     for i in range(steps):
-                        inbetween_loc = last_loc + (path / max_segment_length) * i
+                        inbetween_loc = last_loc + (path / (steps + 1)) * i
                         yield inbetween_loc, pen
                     yield loc, pen
                     last_loc = loc
