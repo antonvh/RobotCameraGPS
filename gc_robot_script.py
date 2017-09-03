@@ -17,11 +17,11 @@ except:
 ### Initialize ###
 SPEED_MAX = 300
 
-TURN_MAX = 200
+TURN_MAX = 300
 
-SPEED_P = 2
+SPEED_P = 2.5
 
-TURN_P = 1
+TURN_P = 1.3
 
 PORT = 50008
 
@@ -35,7 +35,7 @@ GCODE_SCALE = 10 # Generating gcode in mm and then scaling it up to reduce exces
 
 INTERPOLATION = 2 # Max length (in mm!) between two points
 
-PEN_ACTIVE = 1
+PEN_ACTIVE = 0
 
 PEN_DOWN = -150
 
@@ -51,6 +51,7 @@ left_motor = ev3.LargeMotor(ev3.OUTPUT_B)
 right_motor = ev3.LargeMotor(ev3.OUTPUT_C)
 if PEN_ACTIVE:
     pen_motor = ev3.MediumMotor(ev3.OUTPUT_A)
+    pen_motor.position = 0
 
 ### Helpers ###
 def vec2d_length(vector):
@@ -95,6 +96,7 @@ get_positions_thread.start()
 positions = gcode_parser('ev3.nc', max_segment_length=INTERPOLATION)
 target, pen = next(positions)
 target = target * GCODE_SCALE
+print(target,pen)
 
 while 1:
     try:
@@ -120,6 +122,7 @@ while 1:
                 try:
                     target, pen = next(positions)
                     target = target * GCODE_SCALE
+                    print(target,pen)                
                 except:
                     # We've run of targets
                     break
