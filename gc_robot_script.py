@@ -48,17 +48,6 @@ def clamp(n, range):
     return max(min(maxn, n), minn)
 
 
-
-### Position generators ###
-def circle(origin, radius, step_px):
-    circumference = radius * 2 * PI
-    numsteps = int(circumference/step_px) + 1
-    for i in range(numsteps):
-        angle = 2 * PI / numsteps * i
-        coord = np.array([cos(angle) * radius + origin[0], sin(angle) * radius + origin[1]])
-        yield coord
-
-
 ### Get robot positions from server ###
 def get_positions():
     global robot_positions, running
@@ -81,18 +70,12 @@ def get_positions():
 get_positions_thread = Thread(target=get_positions)
 get_positions_thread.start()
 
-# positions = circle((500,500), 200, 10)
 positions = gcode_parser('ev3.nc')
-#target = next(positions)
 target = np.array(next(positions)[:2])*10
-# target = np.array([1920/2, 1080/2])
 
 while 1:
     try:
         # Putting this in a try statement because we need to clean up after ctrl-c
-        # Motor code goes here
-        # time.sleep(1)
-        # print(robot_positions)
 
         if THIS_ROBOT in robot_positions:
             heading = robot_positions[THIS_ROBOT]['heading']
@@ -110,8 +93,8 @@ while 1:
                 path = target - nose
 
             target_direction = vec2d_angle(path) - heading
-            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -2, (-200, 200))
-            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-200, 200))
+            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-200, 200))
+            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-300, 300))
             left_motor.run_forever(speed_sp=(speed + turnrate))
             right_motor.run_forever(speed_sp=(speed - turnrate))
         else:
