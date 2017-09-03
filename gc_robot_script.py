@@ -8,6 +8,8 @@ import logging
 from math import sin, cos
 import numpy as np
 import ev3dev.auto as ev3
+
+
 try:
     import cPickle as pickle
 except:
@@ -15,10 +17,27 @@ except:
 
 
 ### Initialize ###
+SPEED_MAX = 300
+
+TURN_MAX = 200
+
+SPEED_P = 2
+
+TURN_P = 1
+
 PORT = 50008
+
 THIS_ROBOT = 1      # Our own ID
+
 PI = 3.1415
+
 TWO_PI = 2*PI
+
+GCODE_SCALE = 10 # Generating gcode in mm and then scaling it up to reduce excess preciosion
+
+INTERPOLATION = 2 # Max length (in mm!) between two points
+
+
 robot_positions = {}
 running = True
 logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
@@ -70,14 +89,18 @@ def get_positions():
 get_positions_thread = Thread(target=get_positions)
 get_positions_thread.start()
 
-positions = gcode_parser('ev3.nc')
-target = next(positions)[0] * 10
+positions = gcode_parser('ev3.nc', max_segment_length=INTERPOLATION)
+target, pen = next(positions)
+target = target * GCODE_SCALE
 
 while 1:
     try:
         # Putting this in a try statement because we need to clean up after ctrl-c
 
         if THIS_ROBOT in robot_positions:
+            if pen:
+                pass
+
             heading = robot_positions[THIS_ROBOT]['heading']
             position = np.array(robot_positions[THIS_ROBOT]['center'])
             nose = np.array(robot_positions[THIS_ROBOT]['front'])
@@ -88,15 +111,16 @@ while 1:
             if vec2d_length(path) <= 2:
                 # Try to get a new target if we're close enough to the current one.
                 try:
-                    target = next(positions)[0] * 10
+                    target, pen = next(positions)
+                    target = target * GCODE_SCALE
                 except:
                     # We've run of targets
                     break
                 path = target - nose
 
             target_direction = vec2d_angle(path) - heading
-            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-200, 200))
-            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-300, 300))
+            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -TURN_P, (-TURN_MAX, TURN_MAX))
+            speed = clamp(vec2d_length(path) * cos(target_direction) * -SPEED_P, (-SPEED_MAX, SPEED_MAX))
             left_motor.run_forever(speed_sp=(speed + turnrate))
             right_motor.run_forever(speed_sp=(speed - turnrate))
         else:
