@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
-import socket, sys, struct
+import socket, sys
 from threading import Thread
-import time
 from gcode import gcode_parser
 import logging
 from math import sin, cos
 import numpy as np
 import ev3dev.auto as ev3
-
 
 try:
     import cPickle as pickle
@@ -37,6 +35,9 @@ GCODE_SCALE = 10 # Generating gcode in mm and then scaling it up to reduce exces
 
 INTERPOLATION = 2 # Max length (in mm!) between two points
 
+PEN_ACTIVE = 1
+
+PEN_DOWN = -150
 
 robot_positions = {}
 running = True
@@ -48,6 +49,8 @@ logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
 
 left_motor = ev3.LargeMotor(ev3.OUTPUT_B)
 right_motor = ev3.LargeMotor(ev3.OUTPUT_C)
+if PEN_ACTIVE:
+    pen_motor = ev3.MediumMotor(ev3.OUTPUT_A)
 
 ### Helpers ###
 def vec2d_length(vector):
@@ -98,8 +101,12 @@ while 1:
         # Putting this in a try statement because we need to clean up after ctrl-c
 
         if THIS_ROBOT in robot_positions:
-            if pen:
-                pass
+            if (not pen) and PEN_ACTIVE:
+                pen_motor.run_to_abs_pos(position_sp=0, speed_sp=400, stop_action="brake")
+                pen_motor.wait_while("running")
+            if pen and PEN_ACTIVE:
+                pen_motor.run_to_abs_pos(position_sp=PEN_DOWN, speed_sp=400, stop_action="brake")
+                pen_motor.wait_while("running")
 
             heading = robot_positions[THIS_ROBOT]['heading']
             position = np.array(robot_positions[THIS_ROBOT]['center'])
