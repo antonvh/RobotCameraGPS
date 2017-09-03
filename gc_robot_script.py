@@ -83,8 +83,8 @@ get_positions_thread.start()
 
 # positions = circle((500,500), 200, 10)
 positions = gcode_parser('ev3.nc')
-target = next(positions)
-
+#target = next(positions)
+target = np.array(next(positions)[:2])*10
 # target = np.array([1920/2, 1080/2])
 
 while 1:
@@ -102,15 +102,16 @@ while 1:
             # Calculate vector from nose to target
             path = target-nose
             if vec2d_length(path) <= 2:
+                print(target, target[:2])
                 try:
-                    target = np.array(next(positions)[:2])
+                    target = np.array(next(positions)[:2])*10
                 except:
                     break #no more points to be had
                 path = target - nose
 
             target_direction = vec2d_angle(path) - heading
-            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-400, 400))
-            speed = clamp(vec2d_length(path) * cos(target_direction) * -1, (-400, 400))
+            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -2, (-200, 200))
+            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-200, 200))
             left_motor.run_forever(speed_sp=(speed + turnrate))
             right_motor.run_forever(speed_sp=(speed - turnrate))
         else:
