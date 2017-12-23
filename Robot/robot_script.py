@@ -98,6 +98,7 @@ if __name__ == '__main__':
 
             if THIS_ROBOT in robot_broadcast_data['states']:
                 center = np.array(robot_broadcast_data['states'][THIS_ROBOT][0])
+                print(robot_broadcast_data['states'])
                 nose = np.array(robot_broadcast_data['states'][THIS_ROBOT][1])
                 heading = vec2d_angle(nose-center)
 
@@ -129,10 +130,14 @@ if __name__ == '__main__':
             e = sys.exc_info()[0]
             logging.warning(e)
             running = False
+            left_motor.stop()
+            right_motor.stop()
+            logging.info("Cleaned up")
             # Something went wrong or user aborted the script
-            break
+            raise
 
     # Clean up
+    running = False
     left_motor.stop()
     right_motor.stop()
     logging.info("Cleaned up")
