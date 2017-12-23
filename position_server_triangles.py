@@ -16,7 +16,7 @@ except:
 
 
 ### Settings ###
-THRESH = 80        # Threshold for b/w version of camera image
+THRESH = 100        # Threshold for b/w version of camera image
 SERVER_ADDR = ("255.255.255.255", 50008)
 
 
@@ -130,7 +130,7 @@ while True:
     # logging.debug("found contours", t - time.time())
 
     # Uncomment to preview thresholded image
-    img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
+    #img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
     robot_states = {}
     # Find triangular contours with at least 2 children. These must be our markers!
