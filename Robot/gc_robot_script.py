@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
-import socket, sys
-from threading import Thread
-from gcode import gcode_parser
 import logging
+import socket
+import sys
 from math import sin, cos
-import numpy as np
+from threading import Thread
+
 import ev3dev.auto as ev3
+import numpy as np
+
+from Robot.gcode import gcode_parser
 
 try:
     import cPickle as pickle

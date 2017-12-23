@@ -18,14 +18,12 @@ s.bind(('', PORT))
 while 1:
     try:
         data, server = s.recvfrom(2048)
-        robot_positions = pickle.loads(data)
-        # delay = time.time()-robot_positions['time']
-        # print(delay)
-        print(robot_positions)
+        robot_broadcast_data = pickle.loads(data)
+        print(robot_broadcast_data)
     except:
         e = sys.exc_info()[0]
         logging.warning(e)
-        break
+        raise
 
 
 
