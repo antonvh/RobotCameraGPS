@@ -1,5 +1,5 @@
 import socket
-import sys,time
+import time
 try:
     import cPickle as pickle
 except:
@@ -26,14 +26,16 @@ robot_broadcast_data = {'states': {1: [(500, 500),    # middle of triangle base
                                      'dump_location': (20, 20)}
                         }
 
-while True:
-    data = pickle.dumps(robot_broadcast_data)
-    if data:
-        try:
-            sent = sock.sendto(data, server_address)
-            time.sleep(0.025)
-        except OSError as exc:
-            if exc.errno == 55:
-                time.sleep(0.1)
-            else:
-                raise
+if __name__ == '__main__':
+    while True:
+        time.sleep(0.033)
+        data = pickle.dumps(robot_broadcast_data)
+        if data:
+            try:
+                sent = sock.sendto(data, server_address)
+                time.sleep(0.025)
+            except OSError as exc:
+                if exc.errno == 55:
+                    time.sleep(0.1)
+                else:
+                    raise

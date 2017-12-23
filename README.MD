@@ -26,3 +26,12 @@ On the brick you need numpy:
 `apt-get install python-pip python-dev python-numpy`
 or
 `apt-get install python-numpy`
+... and a lot of patience.
+
+# Running
+- Print the templates and stick them on robots
+- Plug in a webcam into your Mac/Pc and run the position_server_triangles.py
+- Run the robot scripts on the robot and put the robots under the webcam
+ 
+# Testing
+The repository includes a bare server with dummy data and a bare client for your testing convenience.
