@@ -125,11 +125,11 @@ if __name__ == '__main__':
         except:
             e = sys.exc_info()[0]
             logging.warning(e)
+            running = False
             # Something went wrong or user aborted the script
             break
 
     # Clean up
     left_motor.stop()
     right_motor.stop()
-    logging.info("Cleaning up")
-    running = False
+    logging.info("Cleaned up")

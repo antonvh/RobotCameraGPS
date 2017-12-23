@@ -17,19 +17,35 @@ except:
 from multiprocessing.connection import Listener
 
 ### Initialize ###
-
+# Camera
 cv2.namedWindow("cam", cv2.WINDOW_OPENGL)
 cap = cv2.VideoCapture(0)
 cap.set(3,1920)
-robot_positions = {}
+
+# Data
+robot_broadcast_data = {'states': {
+                                   # 1: [(500, 500),    # middle of triangle base
+                                   #     (520, 520)],   # point of traingle
+                                   # 2: [(400, 400),    # middle of triangle base
+                                   #     (420, 420)]    # point of traingle
+                                   # etc...
+                                   },
+                        'balls': [], # List of Centroids
+                        'settings': {'sight_range': 100,
+                                     'dump_location': (20, 20)}
+                        }
+
+# Server settings
 SERVER_ADDR = ("255.255.255.255", 50008)
 RECV_BUFFER = 128  # Block size
+running = True
+
+# Logging n stuff
 logging.basicConfig(#filename='position_server.log',     # To a file. Or not.
                     filemode='w',                       # Start each run with a fresh log
                     format='%(asctime)s, %(levelname)s, %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.INFO, )              # Log info, and warning
-running = True
 n = 100             # Number of loops to wait for time calculation
 t = time.time()
 
@@ -62,10 +78,10 @@ class SocketThread(Thread):
         Thread.__init__(self)
 
     def run(self):
-        global robot_positions, running
+        global robot_broadcast_data, running
 
         while running:
-            data = pickle.dumps(robot_positions)
+            data = pickle.dumps(robot_broadcast_data)
 
             try:
                 sent = self.server_socket.sendto(data, SERVER_ADDR)
@@ -86,21 +102,16 @@ socket_server = SocketThread()
 socket_server.start()
 
 while True:
-
-
     ok, img = cap.read()
     if not ok:
         continue    #and try again.
-    height, width = img.shape[:2]
+    img_height, img_width = img.shape[:2]
     # width = np.size(img, 1)
 
     # convert to grayscale
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # logging.debug("read greyscale", t - time.time())
-    # Otsu's thresholding. Nice & fast!
-    # http://docs.opencv.org/trunk/d7/d4d/tutorial_py_thresholding.html
-    # values, img_grey = cv2.threshold(img_grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # logging.debug("read greyscale image", t - time.time())
 
     # Simple adaptive mean thresholding
     values, img_grey = cv2.threshold(img_grey, THRESH, 255, cv2.ADAPTIVE_THRESH_MEAN_C)
@@ -109,10 +120,10 @@ while True:
     img_grey, contours, hierarchy = cv2.findContours(img_grey, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # logging.debug("found contours", t - time.time())
 
-    # Preview thresholded image
+    # Uncomment to preview thresholded image
     #img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
-    robot_positions = {}
+    robot_states = {}
     # Find triangular contours with at least 2 children. These must be our markers!
     for x in range(0, len(contours)):
 
@@ -164,27 +175,27 @@ while True:
                 R = np.array([[-s, -c], [-c, s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
-                relative_code_positions = np.array([[0.375, 0.37],
-                                                    [0.125, 0.37],
-                                                    [-0.125, 0.37],
-                                                    [-0.375, 0.37]])
+                relative_code_positions = np.array([[0.375, 0.33],
+                                                    [0.125, 0.33],
+                                                    [-0.125, 0.33],
+                                                    [-0.375, 0.33]])
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
 
 
-                code = 0
+                robot_id = 0
                 for i in range(4):
                     try:
                         p = img_grey[locations[i][1], locations[i][0]]
                     except: # The needed pixel is probably outside the image.
-                        code = -1
+                        robot_id = -1
                         break
                     if not p:
-                        code += 2**i
+                        robot_id += 2 ** i
 
                 # Draw the data
                 cv2.putText(img,
-                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, code, center[0], height-center[1]),
+                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, robot_id, center[0], img_height - center[1]),
                             tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
                 # Draw binary code marker positions...
@@ -195,16 +206,21 @@ while True:
                 cv2.drawContours(img, [approx], -1, (0, 255, 0))
 
                 # Save the data in our global dictionary
-                robot_positions[code] = {'contour': approx,
-                                         'center': (center[0], height-center[1]),
-                                         'front': (front[0], height-front[1]),
-                                         'heading': heading, # In Radians, 0 is along x axis, positive is ccw
-                                         }
+                robot_states[robot_id] = [(center[0], img_height - center[1]),  # Triangle Center with origin at bottom left
+                                          (front[0], img_height - front[1])]    # Triangle Top with origin at bottom left
+
+                                        # {'contour': approx,
+                                        #  'center': (center[0], height-center[1]),
+                                        #  'front': (front[0], height-front[1]),
+                                        #  'heading': heading,  # In Radians, 0 is along x axis, positive is ccw
+                                        #   }
+
+    robot_broadcast_data['states'] = robot_states
     # logging.debug("found markers", t - time.time())
 
     # Draw the middle of the screen
-    cv2.line(img, (width // 2 - 20, height // 2), (width // 2 + 20, height // 2), (0, 0, 255), 3)
-    cv2.line(img, (width // 2, height // 2 - 20), (width // 2, height // 2 + 20), (0, 0, 255), 3)
+    cv2.line(img, (img_width // 2 - 20, img_height // 2), (img_width // 2 + 20, img_height // 2), (0, 0, 255), 3)
+    cv2.line(img, (img_width // 2, img_height // 2 - 20), (img_width // 2, img_height // 2 + 20), (0, 0, 255), 3)
 
     # Show all calculations in the preview window
     cv2.imshow("cam", img)
