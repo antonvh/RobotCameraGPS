@@ -112,7 +112,7 @@ if __name__ == '__main__':
         target = next(circle_step)
     else:
         target = CENTER
-        print("Current target:", target)
+    logging.info("Current target:" + str(target))
 
     logging.info("Running")
     while 1:
@@ -131,7 +131,7 @@ if __name__ == '__main__':
                     if vec2d_length(path) <= 2:
                         try:
                             target = next(circle_step)
-                            print("Current target:", target)
+                            logging.info("Current target:" + str(target))
                         except:
                             break  # no more points to be had
                         path = target - nose
