@@ -22,7 +22,7 @@ GO_TO_CENTER = 0
 CENTER = np.array([1920/2, 1080/2])
 MODE = GO_TO_CENTER
 
-robot_broadcast_data = {}
+robot_broadcast_data = {'states':{},'balls':{},'settings':{}}
 running = True
 logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
     filemode='w',                                           # Start each run with a fresh log
@@ -92,10 +92,10 @@ if __name__ == '__main__':
     else:
         target = CENTER
 
+    logging.info("Running")
     while 1:
         try:
             # We put this in a try statement because we need to clean up after ctrl-c
-
             if THIS_ROBOT in robot_broadcast_data['states']:
                 center = np.array(robot_broadcast_data['states'][THIS_ROBOT][0])
                 print(robot_broadcast_data['states'])
