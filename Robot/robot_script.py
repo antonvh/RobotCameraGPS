@@ -21,7 +21,7 @@ TWO_PI = 2 * PI
 CIRCLE = 1
 GO_TO_CENTER = 0
 CENTER = np.array([1920 / 2, 1080 / 2])
-MODE = CIRCLE     # or CIRCLE
+MODE = CIRCLE     # GO_TO_CENTER or CIRCLE
 
 # Server communication
 robot_broadcast_data = {'states': {}, 'balls': {}, 'settings': {}}
@@ -112,6 +112,7 @@ if __name__ == '__main__':
         target = next(circle_step)
     else:
         target = CENTER
+        print("Current target:", target)
 
     logging.info("Running")
     while 1:
@@ -130,6 +131,7 @@ if __name__ == '__main__':
                     if vec2d_length(path) <= 2:
                         try:
                             target = next(circle_step)
+                            print("Current target:", target)
                         except:
                             break  # no more points to be had
                         path = target - nose
