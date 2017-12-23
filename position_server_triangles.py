@@ -55,7 +55,13 @@ t = time.time()
 
 ### Helper functions ###
 def atan2_vec(vector):
-    return np.arctan2(vector[1], vector[0])
+    """
+    Angle relative to horizontal axis. With vectors where the Y axis pointing down.
+    A turn to the left is positive.
+    :param vector:
+    :return:
+    """
+    return -np.arctan2(vector[1], vector[0])
 
 
 def vec_length(vector):
@@ -174,7 +180,7 @@ while True:
                 # Rotation matrix
                 c = np.cos(heading)
                 s = np.sin(heading)
-                R = np.array([[s, c], [c, -s]])
+                R = np.array([[-s, -c], [-c, s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
                 relative_code_positions = np.array([[0.375, 0.33],
@@ -199,7 +205,7 @@ while True:
 
                 # Draw the data
                 cv2.putText(img,
-                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(-heading, robot_id, center[0], img_height - center[1]),
+                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, robot_id, center[0], img_height - center[1]),
                             tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
 

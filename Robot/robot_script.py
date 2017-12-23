@@ -21,7 +21,7 @@ TWO_PI = 2 * PI
 CIRCLE = 1
 GO_TO_CENTER = 0
 CENTER = np.array([1920 / 2, 1080 / 2])
-MODE = GO_TO_CENTER     # or CIRCLE
+MODE = CIRCLE     # or CIRCLE
 
 # Server communication
 robot_broadcast_data = {'states': {}, 'balls': {}, 'settings': {}}
