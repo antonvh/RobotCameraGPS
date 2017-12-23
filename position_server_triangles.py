@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 
+# Reads webcam data and outputs found triangle markers as an UDP broadcast
+# Use q to stop this script, not ctrl-c!
+
 import cv2
 import numpy as np
 import time
 from threading import Thread
-import select, socket, sys, struct
+import socket
 import logging
-
-THRESH = 120
 try:
     import cPickle as pickle
 except:
     import pickle
 
 
-from multiprocessing.connection import Listener
+### Settings ###
+THRESH = 120        # Threshold for b/w version of camera image
+SERVER_ADDR = ("255.255.255.255", 50008)
+
+
 
 ### Initialize ###
 # Camera
@@ -35,9 +40,7 @@ robot_broadcast_data = {'states': {
                                      'dump_location': (20, 20)}
                         }
 
-# Server settings
-SERVER_ADDR = ("255.255.255.255", 50008)
-RECV_BUFFER = 128  # Block size
+# Server
 running = True
 
 # Logging n stuff
@@ -52,7 +55,7 @@ t = time.time()
 
 ### Helper functions ###
 def atan2_vec(vector):
-    return -np.arctan2(vector[1], vector[0])
+    return np.arctan2(vector[1], vector[0])
 
 
 def vec_length(vector):
@@ -141,7 +144,6 @@ while True:
             c = c + 1
 
         if c == 2:
-
             # To do: also check if it runs *exactly* 2 children deep. and not more.
             # This marker has at least two children. Now let's check if it's a triangle.
             approx = cv2.approxPolyDP(contours[x], cv2.arcLength(contours[x], True)*0.05, True)
@@ -172,17 +174,19 @@ while True:
                 # Rotation matrix
                 c = np.cos(heading)
                 s = np.sin(heading)
-                R = np.array([[-s, -c], [-c, s]])
+                R = np.array([[s, c], [c, -s]])
 
                 # Calculate the relative position of the code dots with some linear algebra.
                 relative_code_positions = np.array([[0.375, 0.33],
                                                     [0.125, 0.33],
                                                     [-0.125, 0.33],
                                                     [-0.375, 0.33]])
+
+                # Now do a dot product of the relative positions with the center position,
+                # and offset this back to position of the robot to find matrix of absolute code pixel positions
                 locations = (center + np.dot(relative_code_positions * shortest, R)).astype(int)
 
-
-
+                # Now check all code pixels and do a binary addition
                 robot_id = 0
                 for i in range(4):
                     try:
@@ -195,36 +199,30 @@ while True:
 
                 # Draw the data
                 cv2.putText(img,
-                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(heading, robot_id, center[0], img_height - center[1]),
+                            u"{0:.2f} rad, code: {1}, x:{2}, y:{3}".format(-heading, robot_id, center[0], img_height - center[1]),
                             tuple(center),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 4)
-                # Draw binary code marker positions...
+
+                # Draw binary robot id marker positions
                 for l in locations:
                     cv2.circle(img, tuple(l), 4, (0, 255, 0), -1)
 
-                #Draw the contour of our triangle
+                # Draw the contour of our triangle
                 cv2.drawContours(img, [approx], -1, (0, 255, 0))
 
                 # Save the data in our global dictionary
                 robot_states[robot_id] = [(center[0], img_height - center[1]),  # Triangle Center with origin at bottom left
                                           (front[0], img_height - front[1])]    # Triangle Top with origin at bottom left
 
-                                        # {'contour': approx,
-                                        #  'center': (center[0], height-center[1]),
-                                        #  'front': (front[0], height-front[1]),
-                                        #  'heading': heading,  # In Radians, 0 is along x axis, positive is ccw
-                                        #   }
-
     robot_broadcast_data['states'] = robot_states
     # logging.debug("found markers", t - time.time())
 
-    # Draw the middle of the screen
+    # Draw a + at the middle of the screen
     cv2.line(img, (img_width // 2 - 20, img_height // 2), (img_width // 2 + 20, img_height // 2), (0, 0, 255), 3)
     cv2.line(img, (img_width // 2, img_height // 2 - 20), (img_width // 2, img_height // 2 + 20), (0, 0, 255), 3)
 
     # Show all calculations in the preview window
     cv2.imshow("cam", img)
-
     # logging.debug("shown image", t - time.time())
 
     # Wait for the 'q' key. Dont use ctrl-c !!!
@@ -237,7 +235,6 @@ while True:
         t = time.time()
     else:
         n -= 1
-
 
 ### clean up ###
 running = False
