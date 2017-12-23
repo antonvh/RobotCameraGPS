@@ -2,7 +2,6 @@
 
 import socket, sys
 from threading import Thread
-import time
 import logging
 from math import sin, cos
 import numpy as np
@@ -15,7 +14,7 @@ except:
 
 ### Initialize ###
 PORT = 50008
-THIS_ROBOT = 1      # Our own ID
+THIS_ROBOT = 2      # Our own ID
 PI = 3.1415
 TWO_PI = 2*PI
 CIRCLE = 1
