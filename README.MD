@@ -21,3 +21,8 @@ https://github.com/Polyconseil/zbarlight/
 `--with-opengl` Speeds up the video preview a LOT! Code works without opengl, but at 8-10 fps... 
 
 And then of course `git clone` this repository.
+
+On the brick you need numpy:
+`apt-get install python-pip python-dev python-numpy`
+or
+`apt-get install python-numpy`
