@@ -97,9 +97,10 @@ if __name__ == '__main__':
         try:
             # We put this in a try statement because we need to clean up after ctrl-c
             if THIS_ROBOT in robot_broadcast_data['states']:
-                center = np.array(robot_broadcast_data['states'][THIS_ROBOT][0])
-                print(center, robot_broadcast_data['states'])
-                nose = np.array(robot_broadcast_data['states'][THIS_ROBOT][1])
+                my_state = robot_broadcast_data['states'][THIS_ROBOT]
+                center = np.array(my_state[0])
+                print(center, my_state)
+                nose = np.array(my_state[1])
                 heading = vec2d_angle(nose-center)
 
                 #heading = robot_positions[THIS_ROBOT]['heading']
