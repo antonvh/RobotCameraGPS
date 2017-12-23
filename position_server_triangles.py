@@ -110,7 +110,7 @@ while True:
     # logging.debug("found contours", t - time.time())
 
     # Preview thresholded image
-    img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
+    #img = cv2.cvtColor(img_grey, cv2.COLOR_GRAY2BGR)
 
     robot_positions = {}
     # Find triangular contours with at least 2 children. These must be our markers!
