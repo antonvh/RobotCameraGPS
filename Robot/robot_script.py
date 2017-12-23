@@ -97,10 +97,8 @@ if __name__ == '__main__':
         try:
             # We put this in a try statement because we need to clean up after ctrl-c
             if THIS_ROBOT in robot_broadcast_data['states']:
-                # Copy global variable to local, otherwise Bad Shit Happens
-                my_state = robot_broadcast_data['states'][THIS_ROBOT]
-                center = np.array(my_state[0])
-                nose = np.array(my_state[1])
+                # Copy global variable to local ones, otherwise Bad Shit Happens in MultiThreading
+                center, nose = np.array(robot_broadcast_data['states'][THIS_ROBOT])
                 heading = vec2d_angle(nose-center)
 
                 # Calculate vector from nose to target
