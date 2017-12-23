@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import socket, sys, struct
+import socket, sys
 from threading import Thread
 import time
 import logging
@@ -18,6 +18,11 @@ PORT = 50008
 THIS_ROBOT = 1      # Our own ID
 PI = 3.1415
 TWO_PI = 2*PI
+CIRCLE = 1
+GO_TO_CENTER = 0
+CENTER = np.array([1920/2, 1080/2])
+MODE = GO_TO_CENTER
+
 robot_positions = {}
 running = True
 logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
@@ -29,12 +34,15 @@ logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
 left_motor = ev3.LargeMotor(ev3.OUTPUT_B)
 right_motor = ev3.LargeMotor(ev3.OUTPUT_C)
 
+
 ### Helpers ###
 def vec2d_length(vector):
     return np.dot(vector, vector)**0.5
 
+
 def vec2d_angle(vector):
     return np.arctan2(vector[1], vector[0])
+
 
 def clamp(n, range):
     """
@@ -47,8 +55,7 @@ def clamp(n, range):
     return max(min(maxn, n), minn)
 
 
-
-### Position generators ###
+### Position generator ###
 def circle(origin, radius, step_px):
     circumference = radius * 2 * PI
     numsteps = int(circumference/step_px) + 1
@@ -77,52 +84,53 @@ def get_positions():
 
 
 ### Run the main loop ###
-get_positions_thread = Thread(target=get_positions)
-get_positions_thread.start()
+if __name__ == '__main__':
+    get_positions_thread = Thread(target=get_positions)
+    get_positions_thread.start()
+    positions = circle((500, 500), 200, 10)
 
-positions = circle((500,500), 200, 10)
-# target = next(positions)
+    if MODE == CIRCLE:
+        target = next(positions)
+    else:
+        target = CENTER
 
-target = np.array([1920/2, 1080/2])
+    while 1:
+        try:
+            # We put this in a try statement because we need to clean up after ctrl-c
 
-while 1:
-    try:
-        # Putting this in a try statement because we need to clean up after ctrl-c
-        # Motor code goes here
-        # time.sleep(1)
-        # print(robot_positions)
+            if THIS_ROBOT in robot_positions:
+                heading = robot_positions[THIS_ROBOT]['heading']
+                position = np.array(robot_positions[THIS_ROBOT]['center'])
+                nose = np.array(robot_positions[THIS_ROBOT]['front'])
 
-        if THIS_ROBOT in robot_positions:
-            heading = robot_positions[THIS_ROBOT]['heading']
-            position = np.array(robot_positions[THIS_ROBOT]['center'])
-            nose = np.array(robot_positions[THIS_ROBOT]['front'])
+                # Calculate vector from nose to target
+                path = target-nose
 
-            # Calculate vector from nose to target
-            path = target-nose
-            # if vec2d_length(path) <= 2:
-            #     try:
-            #         target = next(positions)
-            #     except:
-            #         break #no more points to be had
-            #     path = target - nose
+                if MODE == CIRCLE:
+                    if vec2d_length(path) <= 2:
+                        try:
+                            target = next(positions)
+                        except:
+                            break #no more points to be had
+                        path = target - nose
 
-            target_direction = vec2d_angle(path) - heading
-            turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-500, 500))
-            speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-500, 500))
-            # print(",".join([str(x) for x in [speed, turnrate, position[0], position[1], nose[0], nose[1], target[0], target[1], target_direction*180/PI, heading*180/PI, vec2d_angle(path)*180/PI]]))
-            left_motor.run_forever(speed_sp=(speed + turnrate))
-            right_motor.run_forever(speed_sp=(speed - turnrate))
-        else:
-            left_motor.stop()
-            right_motor.stop()
-    except:
-        e = sys.exc_info()[0]
-        logging.warning(e)
-        # Something went wrong or user aborted the script
-        break
+                target_direction = vec2d_angle(path) - heading
+                turnrate = clamp(vec2d_length(path) * sin(target_direction) * -1, (-500, 500))
+                speed = clamp(vec2d_length(path) * cos(target_direction) * -2, (-500, 500))
+                # print(",".join([str(x) for x in [speed, turnrate, position[0], position[1], nose[0], nose[1], target[0], target[1], target_direction*180/PI, heading*180/PI, vec2d_angle(path)*180/PI]]))
+                left_motor.run_forever(speed_sp=(speed + turnrate))
+                right_motor.run_forever(speed_sp=(speed - turnrate))
+            else:
+                left_motor.stop()
+                right_motor.stop()
+        except:
+            e = sys.exc_info()[0]
+            logging.warning(e)
+            # Something went wrong or user aborted the script
+            break
 
-# Clean up
-left_motor.stop()
-right_motor.stop()
-logging.info("Cleaning up")
-running = False
+    # Clean up
+    left_motor.stop()
+    right_motor.stop()
+    logging.info("Cleaning up")
+    running = False
