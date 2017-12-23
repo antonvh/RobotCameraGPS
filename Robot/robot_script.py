@@ -106,7 +106,7 @@ def get_camera_data():
 if __name__ == '__main__':
     get_positions_thread = Thread(target=get_camera_data)
     get_positions_thread.start()
-    circle_step = circle_steps((500, 500), 400, 50)
+    circle_step = circle_steps((1920//2, 1080//2), 400, 50)
 
     if MODE == CIRCLE:
         target = next(circle_step)
@@ -128,7 +128,7 @@ if __name__ == '__main__':
                 path = target - nose
 
                 if MODE == CIRCLE:
-                    if vec2d_length(path) <= 2:
+                    if vec2d_length(path) <= 6:
                         try:
                             target = next(circle_step)
                             logging.info("Current target:" + str(target))
