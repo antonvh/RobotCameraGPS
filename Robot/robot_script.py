@@ -106,7 +106,7 @@ def get_camera_data():
 if __name__ == '__main__':
     get_positions_thread = Thread(target=get_camera_data)
     get_positions_thread.start()
-    circle_step = circle_steps((500, 500), 200, 10)
+    circle_step = circle_steps((500, 500), 400, 50)
 
     if MODE == CIRCLE:
         target = next(circle_step)
