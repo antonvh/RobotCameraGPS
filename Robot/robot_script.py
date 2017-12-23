@@ -22,7 +22,7 @@ GO_TO_CENTER = 0
 CENTER = np.array([1920/2, 1080/2])
 MODE = GO_TO_CENTER
 
-robot_positions = {}
+robot_broadcast_data = {}
 running = True
 logging.basicConfig(  # filename='position_server.log',     # To a file. Or not.
     filemode='w',                                           # Start each run with a fresh log
@@ -37,7 +37,6 @@ right_motor = ev3.LargeMotor(ev3.OUTPUT_C)
 ### Helpers ###
 def vec2d_length(vector):
     return np.dot(vector, vector)**0.5
-
 
 def vec2d_angle(vector):
     return np.arctan2(vector[1], vector[0])
@@ -66,14 +65,14 @@ def circle(origin, radius, step_px):
 
 ### Get robot positions from server ###
 def get_positions():
-    global robot_positions, running
+    global robot_broadcast_data, running
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('', PORT))
 
     while running:
         try:
             data, server = s.recvfrom(2048)
-            robot_positions = pickle.loads(data)
+            robot_broadcast_data = pickle.loads(data)
         except:
             e = sys.exc_info()[0]
             logging.warning(e)
@@ -97,10 +96,14 @@ if __name__ == '__main__':
         try:
             # We put this in a try statement because we need to clean up after ctrl-c
 
-            if THIS_ROBOT in robot_positions:
-                heading = robot_positions[THIS_ROBOT]['heading']
-                position = np.array(robot_positions[THIS_ROBOT]['center'])
-                nose = np.array(robot_positions[THIS_ROBOT]['front'])
+            if THIS_ROBOT in robot_broadcast_data['states']:
+                center = np.array(robot_broadcast_data['states'][THIS_ROBOT][0])
+                nose = np.array(robot_broadcast_data['states'][THIS_ROBOT][1])
+                heading = vec2d_angle(nose-center)
+
+                #heading = robot_positions[THIS_ROBOT]['heading']
+                #position = np.array(robot_positions[THIS_ROBOT]['center'])
+                #nose = np.array(robot_positions[THIS_ROBOT]['front'])
 
                 # Calculate vector from nose to target
                 path = target-nose
